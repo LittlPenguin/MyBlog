@@ -1,6 +1,8 @@
 # MyBlog
 
-一个基于 Next.js 16、React 19 与 Tailwind CSS 4 构建的现代博客原型站点，当前版本聚焦于视觉叙事、内容展示和带动画的页面切换体验。
+A modern blog prototype built with Next.js 16, React 19, and Tailwind CSS 4.
+The current version focuses on visual storytelling, editorial content layout,
+and animated route transitions.
 
 ## Tech Stack
 
@@ -21,11 +23,13 @@ npm run build
 
 ## Current Status
 
-- 已完成第一版页面实现与基础路由动画。
-- `npm run lint` 与 `npm run typecheck` 通过。
-- `npm run build` 在当前本地环境下曾受到 `.next/trace` 文件锁影响，需要在释放占用后再次验证。
+- The first implementation pass is complete.
+- `npm run lint` and `npm run typecheck` pass locally.
+- `npm run build` was previously blocked by a local `.next/trace` file lock and
+  should be rechecked after the lock is released.
 
 ## Notes
 
-- 设计参考素材与废案目录未纳入版本库。
-- 下一阶段将继续针对 Stitch 设计稿做 1:1 还原，并强化无感路由切换与共享元素过渡。
+- Design reference folders and discarded explorations are not tracked in Git.
+- The next iteration will focus on closer Stitch fidelity and smoother
+  route-transition choreography.
