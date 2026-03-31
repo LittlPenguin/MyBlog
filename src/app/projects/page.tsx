@@ -35,6 +35,10 @@ function projectIcon(icon: "grid" | "spark" | "pen" | "layers") {
   }
 }
 
+export const unstable_instant = {
+  prefetch: "static",
+} as const;
+
 export default function ProjectsPage() {
   return (
     <div className="space-y-6 pb-8 pt-2">

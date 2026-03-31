@@ -10,6 +10,10 @@ export const metadata: Metadata = {
   description: "关于 YYsuni 的工作方式、创作节奏与内容型网站实践。",
 };
 
+export const unstable_instant = {
+  prefetch: "static",
+} as const;
+
 export default function AboutPage() {
   return (
     <div className="space-y-6 pb-8 pt-2">

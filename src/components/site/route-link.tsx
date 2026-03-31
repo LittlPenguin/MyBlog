@@ -27,11 +27,16 @@ export function RouteLink({
   const pathname = usePathname();
   const router = useRouter();
   const { beginTransition } = usePageTransition();
+  const hrefValue =
+    typeof href === "string"
+      ? href
+      : href.pathname
+        ? `${href.pathname}${href.search ?? ""}${href.hash ?? ""}`
+        : null;
 
   const handleClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
     onClick?.(event);
 
-    const hrefValue = typeof href === "string" ? href : null;
     const isExternal = hrefValue ? /^(https?:|mailto:|tel:)/.test(hrefValue) : false;
     const isHashLink = hrefValue?.startsWith("#");
 
@@ -74,6 +79,7 @@ export function RouteLink({
       href={href}
       replace={replace}
       scroll={scroll}
+      prefetch
       className={cn(className)}
       onClick={handleClick}
       {...props}

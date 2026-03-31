@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import matter from "gray-matter";
+import { cache } from "react";
 import readingTime from "reading-time";
 import { compileMDX } from "next-mdx-remote/rsc";
 import rehypeAutolinkHeadings from "rehype-autolink-headings";
@@ -26,12 +27,12 @@ export type PostMeta = PostFrontmatter & {
   readingMinutes: string;
 };
 
-export async function getPostSlugs() {
+export const getPostSlugs = cache(async function getPostSlugs() {
   const files = await fs.readdir(POSTS_DIR);
   return files.filter((file) => file.endsWith(".mdx")).map((file) => file.replace(/\.mdx$/, ""));
-}
+});
 
-export async function getAllPosts() {
+export const getAllPosts = cache(async function getAllPosts() {
   const slugs = await getPostSlugs();
   const posts = await Promise.all(slugs.map((slug) => getPostMeta(slug)));
 
@@ -39,14 +40,14 @@ export async function getAllPosts() {
     .filter((post): post is PostMeta => post !== null)
     .filter((post) => !post.draft)
     .sort((a, b) => +new Date(b.date) - +new Date(a.date));
-}
+});
 
-export async function getFeaturedPosts(limit = 3) {
+export const getFeaturedPosts = cache(async function getFeaturedPosts(limit = 3) {
   const posts = await getAllPosts();
   return posts.filter((post) => post.featured).slice(0, limit);
-}
+});
 
-export async function getPostMeta(slug: string) {
+export const getPostMeta = cache(async function getPostMeta(slug: string) {
   try {
     const filePath = path.join(POSTS_DIR, `${slug}.mdx`);
     const source = await fs.readFile(filePath, "utf8");
@@ -61,9 +62,9 @@ export async function getPostMeta(slug: string) {
   } catch {
     return null;
   }
-}
+});
 
-export async function getPostBySlug(slug: string) {
+export const getPostBySlug = cache(async function getPostBySlug(slug: string) {
   const filePath = path.join(POSTS_DIR, `${slug}.mdx`);
   const source = await fs.readFile(filePath, "utf8");
   const { content } = matter(source);
@@ -99,9 +100,9 @@ export async function getPostBySlug(slug: string) {
     } satisfies PostMeta,
     content: compiledContent,
   };
-}
+});
 
-export async function getAdjacentPosts(slug: string) {
+export const getAdjacentPosts = cache(async function getAdjacentPosts(slug: string) {
   const posts = await getAllPosts();
   const currentIndex = posts.findIndex((post) => post.slug === slug);
 
@@ -113,4 +114,4 @@ export async function getAdjacentPosts(slug: string) {
     previous: posts[currentIndex + 1] ?? null,
     next: posts[currentIndex - 1] ?? null,
   };
-}
+});

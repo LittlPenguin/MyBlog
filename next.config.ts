@@ -6,6 +6,7 @@ const withMDX = createMDX({
 });
 
 const nextConfig: NextConfig = {
+  cacheComponents: true,
   pageExtensions: ["ts", "tsx", "md", "mdx"],
   reactCompiler: true,
   images: {
@@ -22,10 +23,15 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "plus.unsplash.com",
       },
+      {
+        protocol: "https",
+        hostname: "lh3.googleusercontent.com",
+      },
     ],
   },
   experimental: {
     viewTransition: true,
+    instantNavigationDevToolsToggle: true,
   },
 };
 

@@ -10,6 +10,10 @@ type PageProps = {
   params: Promise<{ slug: string }>;
 };
 
+export const unstable_instant = {
+  prefetch: "static",
+} as const;
+
 export async function generateStaticParams() {
   const slugs = await getPostSlugs();
   return slugs.map((slug) => ({ slug }));

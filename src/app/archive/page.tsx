@@ -11,6 +11,10 @@ export const metadata: Metadata = {
   description: "按内容主题和时间整理的文章归档页面。",
 };
 
+export const unstable_instant = {
+  prefetch: "static",
+} as const;
+
 export default async function ArchivePage() {
   const posts = await getAllPosts();
   const columns = [
