@@ -48,21 +48,19 @@ export type TimelineItem = {
 export const siteConfig = {
   name: "YYsuni",
   role: "Writer / Designer / Frontend",
-  description:
-    "一个把文章、项目、资源与日常观察整理在同一块暖色玻璃画布上的个人博客。",
-  heroGreeting: "下午好，YYsuni!",
+  description: "把文章、项目、资源与日常观察整理在同一块暖色玻璃画布上的个人博客。",
+  heroGreeting: "午后好，YYsuni!",
   heroTitle: "把写作、项目与灵感收拢在一块会呼吸的玻璃画布里。",
   heroLead:
     "这里不是单纯的作品集，也不是只写技术的博客，而是一个把内容、界面与工程感放在同一套节奏里的个人网站。",
   location: "Shanghai / Remote",
   email: "hello@yysuni.me",
   now: "最近在重构站点的统一壳体、共享元素路由过渡，以及一套更接近 Stitch 稿的内容布局。",
-  avatar:
-    "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=600&q=80",
+  avatar: "/visuals/avatar-orb.svg",
   gallery: [
-    "https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=900&q=80",
-    "https://images.unsplash.com/photo-1513519245088-0e12902e5a38?auto=format&fit=crop&w=900&q=80",
-    "https://images.unsplash.com/photo-1524758631624-e2822e304c36?auto=format&fit=crop&w=900&q=80",
+    "/visuals/studio-grid-01.svg",
+    "/visuals/studio-grid-02.svg",
+    "/visuals/studio-grid-03.svg",
   ],
   footerNote: "Built as a calm editorial system for writing, making, and collecting.",
 } as const;
@@ -77,12 +75,12 @@ export const navItems: NavItem[] = [
     match: ["/"],
   },
   {
-    href: "/archive",
-    label: "归档",
-    eyebrow: "Archive",
-    icon: "archive",
-    transitionKey: "nav-archive",
-    match: ["/archive", "/posts"],
+    href: "/about",
+    label: "关于",
+    eyebrow: "About",
+    icon: "about",
+    transitionKey: "nav-about",
+    match: ["/about"],
   },
   {
     href: "/projects",
@@ -101,12 +99,12 @@ export const navItems: NavItem[] = [
     match: ["/resources"],
   },
   {
-    href: "/about",
-    label: "关于",
-    eyebrow: "About",
-    icon: "about",
-    transitionKey: "nav-about",
-    match: ["/about"],
+    href: "/archive",
+    label: "归档",
+    eyebrow: "Archive",
+    icon: "archive",
+    transitionKey: "nav-archive",
+    match: ["/archive", "/posts"],
   },
 ];
 
@@ -186,24 +184,12 @@ export const resources: ResourceItem[] = [
     title: "Lucide",
     url: "https://lucide.dev/",
     category: "图标",
-    description: "风格稳定、线条克制、适合和暖色玻璃界面搭配的图标库。",
+    description: "风格稳定、线条克制，适合和暖色玻璃界面搭配的图标库。",
     tags: ["Icons", "SVG", "UI"],
     rating: 5,
     featured: true,
     accent: "tertiary",
     monogram: "LU",
-  },
-  {
-    slug: "unsplash",
-    title: "Unsplash",
-    url: "https://unsplash.com/",
-    category: "图片",
-    description: "找 hero 图和叙事型摄影素材时最常打开的来源之一。",
-    tags: ["Photo", "Editorial", "Asset"],
-    rating: 4,
-    featured: true,
-    accent: "secondary",
-    monogram: "UN",
   },
   {
     slug: "refero",
@@ -213,7 +199,8 @@ export const resources: ResourceItem[] = [
     description: "需要研究真实产品页面的结构与流程时，非常高效的案例库。",
     tags: ["Patterns", "Product", "Research"],
     rating: 4,
-    accent: "primary",
+    featured: true,
+    accent: "secondary",
     monogram: "RE",
   },
   {
@@ -238,6 +225,17 @@ export const resources: ResourceItem[] = [
     accent: "secondary",
     monogram: "RN",
   },
+  {
+    slug: "linear-guidelines",
+    title: "Linear UI Notes",
+    url: "https://linear.app/design",
+    category: "参考",
+    description: "观察现代产品如何组织信息密度、边距和交互反馈的一组长期样本。",
+    tags: ["Product", "Layout", "Systems"],
+    rating: 4,
+    accent: "primary",
+    monogram: "LN",
+  },
 ];
 
 export const timeline: TimelineItem[] = [
@@ -261,7 +259,7 @@ export const timeline: TimelineItem[] = [
 export const aboutHighlights = [
   "偏爱温暖、克制、带一点 editorial 气质的网页设计。",
   "喜欢把写作、设计和前端实现放进同一个工作流里，一起推到成品。",
-  "更关注页面的呼吸感、滚动层级和无感切换，而不是堆砌很多组件。",
+  "更关注页面的呼吸感、滚动层级和无感切换，而不是堆很多组件。",
 ];
 
 export const aboutSkills = [

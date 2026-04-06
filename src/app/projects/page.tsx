@@ -35,10 +35,6 @@ function projectIcon(icon: "grid" | "spark" | "pen" | "layers") {
   }
 }
 
-export const unstable_instant = {
-  prefetch: "static",
-} as const;
-
 export default function ProjectsPage() {
   return (
     <div className="space-y-6 pb-8 pt-2">
@@ -47,16 +43,10 @@ export default function ProjectsPage() {
           <Pill active className="w-fit">
             Selected Works
           </Pill>
-          <h1
-            className="font-heading text-5xl font-black tracking-[-0.08em] text-foreground md:text-6xl"
-            style={{ viewTransitionName: "page-title" }}
-          >
+          <h1 className="font-heading text-5xl font-black tracking-[-0.08em] text-foreground md:text-6xl">
             项目作品集<span className="text-primary italic">.</span>
           </h1>
-          <p
-            className="max-w-2xl text-sm leading-7 text-muted-foreground md:text-base"
-            style={{ viewTransitionName: "page-eyebrow" }}
-          >
+          <p className="max-w-2xl text-sm leading-7 text-muted-foreground md:text-base">
             暮色与玻璃的气质下面，是长期迭代中的产品判断、前端实现与内容组织实验。
           </p>
         </section>

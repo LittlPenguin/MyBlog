@@ -10,10 +10,6 @@ type PageProps = {
   params: Promise<{ slug: string }>;
 };
 
-export const unstable_instant = {
-  prefetch: "static",
-} as const;
-
 export async function generateStaticParams() {
   const slugs = await getPostSlugs();
   return slugs.map((slug) => ({ slug }));
@@ -65,10 +61,7 @@ export default async function PostPage({ params }: PageProps) {
             <Pill active>{post.meta.category}</Pill>
             <Pill>{post.meta.readingMinutes}</Pill>
           </div>
-          <h1
-            className="mt-5 text-balance font-heading text-5xl font-black tracking-[-0.08em] text-foreground md:text-7xl"
-            style={{ viewTransitionName: `post-${post.meta.slug}` }}
-          >
+          <h1 className="mt-5 text-balance font-heading text-5xl font-black tracking-[-0.08em] text-foreground md:text-7xl">
             {post.meta.title}
           </h1>
           <p className="mt-5 max-w-3xl text-lg leading-8 text-muted-foreground">{post.meta.summary}</p>

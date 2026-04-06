@@ -10,18 +10,57 @@ export const metadata: Metadata = {
   description: "关于 YYsuni 的工作方式、创作节奏与内容型网站实践。",
 };
 
-export const unstable_instant = {
-  prefetch: "static",
-} as const;
-
 export default function AboutPage() {
   return (
     <div className="space-y-6 pb-8 pt-2">
-      <section className="grid gap-6 xl:grid-cols-[0.82fr_1.18fr]">
-        <Reveal>
-          <aside className="grid gap-4">
-            <GlassPanel className="p-6 text-center">
-              <div className="relative mx-auto mb-4 h-24 w-24">
+      <Reveal>
+        <section className="about-hero-grid">
+          <GlassPanel className="about-hero-copy relative overflow-hidden p-6 sm:p-8">
+            <div className="absolute bottom-0 right-0 text-[8rem] scrap-icon">
+              <Sparkles className="h-28 w-28 fill-current" />
+            </div>
+
+            <div className="space-y-5">
+              <Pill active className="w-fit">
+                Explorer & Creator
+              </Pill>
+              <h1 className="font-heading text-5xl font-black tracking-[-0.08em] text-foreground md:text-6xl">
+                关于 / <span className="text-primary italic">About Me</span>
+              </h1>
+              <p className="max-w-2xl text-sm leading-8 text-muted-foreground md:text-base">
+                我更关心网页如何被感受到，而不是它拥有多少组件和多少效果。好的个人网站应该像一本持续更新的视觉手帐，既能承载长文，也能容纳项目、收藏与日常观察。
+              </p>
+              <div className="flex flex-wrap gap-3">
+                <ActionLink href="/archive" transitionKey="about-archive">
+                  探索文章
+                </ActionLink>
+                <ActionLink href="/projects" variant="secondary" transitionKey="about-projects">
+                  查看作品
+                </ActionLink>
+              </div>
+            </div>
+          </GlassPanel>
+
+          <GlassPanel className="about-hero-image-wrap p-4">
+            <div className="about-hero-image-stack">
+              <div className="about-hero-image-shadow" aria-hidden="true" />
+              <Image
+                src={siteConfig.gallery[1]}
+                alt="About page editorial board"
+                width={720}
+                height={900}
+                className="about-hero-image"
+              />
+            </div>
+          </GlassPanel>
+        </section>
+      </Reveal>
+
+      <section className="about-body-grid">
+        <Reveal delay={0.04}>
+          <aside className="about-rail">
+            <GlassPanel className="about-profile-card p-6">
+              <div className="relative h-24 w-24">
                 <div className="overflow-hidden rounded-full border-4 border-white shadow-[var(--shadow-mid)]">
                   <Image
                     src={siteConfig.avatar}
@@ -33,29 +72,28 @@ export default function AboutPage() {
                 </div>
                 <span className="absolute bottom-1 right-1 h-4 w-4 rounded-full border-2 border-white bg-green-500" />
               </div>
-              <h2 className="font-heading text-2xl font-black tracking-[-0.05em] text-foreground">YYsuni</h2>
-              <p className="mt-1 text-xs uppercase tracking-[0.2em] text-muted-foreground">Sunset Editor Mode</p>
-              <div className="mt-5 flex flex-wrap justify-center gap-2">
+
+              <div className="space-y-2">
+                <h2 className="font-heading text-3xl font-black tracking-[-0.05em] text-foreground">YYsuni</h2>
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Sunset Editorial System</p>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
                 <Pill active>Designer</Pill>
                 <Pill>Writer</Pill>
                 <Pill>Dev</Pill>
               </div>
-            </GlassPanel>
 
-            <GlassPanel className="p-5">
-              <div className="flex items-center justify-between">
-                <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Current Status</p>
-                <span className="h-2 w-2 rounded-full bg-primary" />
+              <div className="about-rail-copy">
+                <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Current Status</p>
+                <p className="mt-3 text-sm leading-7 text-foreground">
+                  正在探索内容型网站在设计语言、路由过渡和前端结构之间的平衡点，让站点既有温度，也有持续维护的秩序感。
+                </p>
               </div>
-              <p className="mt-4 text-sm leading-7 text-foreground">
-                正在探索内容型网站在设计语言、路由过渡和前端结构之间的平衡点。
-              </p>
             </GlassPanel>
 
             <GlassPanel className="p-5">
-              <h3 className="font-heading text-sm font-black uppercase tracking-[0.18em] text-foreground">
-                Social
-              </h3>
+              <h3 className="font-heading text-sm font-black uppercase tracking-[0.18em] text-foreground">Social</h3>
               <div className="mt-4 space-y-3 text-sm text-muted-foreground">
                 <div className="inline-flex items-center gap-3">
                   <Mail className="h-4 w-4 text-primary" />
@@ -78,62 +116,28 @@ export default function AboutPage() {
                 ))}
               </div>
             </GlassPanel>
+
+            <GlassPanel className="p-5">
+              <h3 className="font-heading text-sm font-black uppercase tracking-[0.18em] text-foreground">
+                核心技能 / Skills
+              </h3>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {aboutSkills.map((item) => (
+                  <Pill key={item}>{item}</Pill>
+                ))}
+              </div>
+              <SoftPanel className="mt-5 p-4 text-sm italic leading-7 text-primary">
+                “好的网站应该像落日余晖一样，温暖、清晰，而且不打断阅读。”
+              </SoftPanel>
+            </GlassPanel>
           </aside>
         </Reveal>
 
         <div className="grid gap-6">
-          <Reveal delay={0.04}>
-            <GlassPanel className="relative overflow-hidden p-6 sm:p-8">
-              <div className="absolute bottom-0 right-0 text-[8rem] scrap-icon">
-                <Sparkles className="h-28 w-28 fill-current" />
-              </div>
-              <div className="grid gap-6 md:grid-cols-[1.1fr_0.9fr] md:items-center">
-                <div className="space-y-4">
-                  <Pill active className="w-fit">
-                    Explorer & Creator
-                  </Pill>
-                  <h1
-                    className="font-heading text-5xl font-black tracking-[-0.08em] text-foreground md:text-6xl"
-                    style={{ viewTransitionName: "page-title" }}
-                  >
-                    关于 / <span className="text-primary italic">About Me</span>
-                  </h1>
-                  <p
-                    className="text-sm leading-7 text-muted-foreground md:text-base"
-                    style={{ viewTransitionName: "page-eyebrow" }}
-                  >
-                    我更关心网页如何被感受到，而不只是它拥有多少组件和多少效果。
-                  </p>
-                  <div className="flex flex-wrap gap-3">
-                    <ActionLink href="/archive" transitionKey="about-archive">
-                      探索文章
-                    </ActionLink>
-                    <ActionLink href="/projects" variant="secondary" transitionKey="about-projects">
-                      查看作品
-                    </ActionLink>
-                  </div>
-                </div>
-
-                <div className="relative mx-auto w-full max-w-[280px]">
-                  <div className="absolute inset-0 rotate-6 rounded-[28px] bg-[rgba(255,217,125,0.32)]" />
-                  <Image
-                    src={siteConfig.gallery[1]}
-                    alt="About page hero image"
-                    width={700}
-                    height={800}
-                    className="relative aspect-[4/5] w-full rounded-[28px] object-cover shadow-[var(--hero-shadow)]"
-                  />
-                </div>
-              </div>
-            </GlassPanel>
-          </Reveal>
-
-          <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-            <Reveal delay={0.08}>
+          <Reveal delay={0.08}>
+            <section className="grid gap-6 xl:grid-cols-[1.08fr_0.92fr]">
               <GlassPanel className="p-6 sm:p-8">
-                <h2 className="font-heading text-2xl font-black tracking-[-0.05em] text-foreground">
-                  自我介绍
-                </h2>
+                <h2 className="font-heading text-2xl font-black tracking-[-0.05em] text-foreground">自我介绍</h2>
                 <div className="mt-5 space-y-3">
                   {aboutHighlights.map((item) => (
                     <SoftPanel key={item} className="p-4 text-sm leading-7 text-muted-foreground">
@@ -141,65 +145,51 @@ export default function AboutPage() {
                     </SoftPanel>
                   ))}
                 </div>
+              </GlassPanel>
 
+              <GlassPanel className="p-6">
+                <div className="flex items-center gap-2">
+                  <Milestone className="h-4 w-4 text-primary" />
+                  <h3 className="font-heading text-lg font-black tracking-[-0.04em] text-foreground">
+                    历程 / Timeline
+                  </h3>
+                </div>
+                <div className="mt-5 space-y-5">
+                  {timeline.map((item) => (
+                    <div key={item.year} className="relative pl-5">
+                      <span className="absolute left-0 top-2 h-2.5 w-2.5 rounded-full bg-primary" />
+                      <p className="text-[10px] uppercase tracking-[0.2em] text-primary">{item.year}</p>
+                      <h4 className="mt-1 font-heading text-base font-black tracking-[-0.03em] text-foreground">
+                        {item.title}
+                      </h4>
+                      <p className="mt-1 text-sm leading-7 text-muted-foreground">{item.description}</p>
+                    </div>
+                  ))}
+                </div>
+              </GlassPanel>
+            </section>
+          </Reveal>
+
+          <Reveal delay={0.12}>
+            <section className="grid gap-6 xl:grid-cols-[1.04fr_0.96fr]">
+              <GlassPanel className="p-6 sm:p-8">
+                <div className="flex items-center justify-between gap-4">
+                  <h3 className="font-heading text-2xl font-black tracking-[-0.05em] text-foreground">近期项目</h3>
+                  <Pill active>Selected Work</Pill>
+                </div>
                 <div className="mt-6 grid gap-3 sm:grid-cols-2">
                   {projects.slice(0, 2).map((project) => (
                     <SoftPanel key={project.slug} className="p-4">
                       <Pill active>{project.year}</Pill>
-                      <h3 className="mt-3 font-heading text-xl font-black tracking-[-0.04em] text-foreground">
+                      <h4 className="mt-3 font-heading text-xl font-black tracking-[-0.04em] text-foreground">
                         {project.title}
-                      </h3>
+                      </h4>
                       <p className="mt-2 text-sm leading-7 text-muted-foreground">{project.summary}</p>
                     </SoftPanel>
                   ))}
                 </div>
               </GlassPanel>
-            </Reveal>
 
-            <div className="grid gap-6">
-              <Reveal delay={0.12}>
-                <GlassPanel className="p-6">
-                  <div className="flex items-center gap-2">
-                    <Milestone className="h-4 w-4 text-primary" />
-                    <h3 className="font-heading text-lg font-black tracking-[-0.04em] text-foreground">
-                      历程 / Timeline
-                    </h3>
-                  </div>
-                  <div className="mt-5 space-y-5">
-                    {timeline.map((item) => (
-                      <div key={item.year} className="relative pl-5">
-                        <span className="absolute left-0 top-2 h-2.5 w-2.5 rounded-full bg-primary" />
-                        <p className="text-[10px] uppercase tracking-[0.2em] text-primary">{item.year}</p>
-                        <h4 className="mt-1 font-heading text-base font-black tracking-[-0.03em] text-foreground">
-                          {item.title}
-                        </h4>
-                        <p className="mt-1 text-sm leading-7 text-muted-foreground">{item.description}</p>
-                      </div>
-                    ))}
-                  </div>
-                </GlassPanel>
-              </Reveal>
-
-              <Reveal delay={0.16}>
-                <GlassPanel className="p-6">
-                  <h3 className="font-heading text-lg font-black tracking-[-0.04em] text-foreground">
-                    核心技能 / Skills
-                  </h3>
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    {aboutSkills.map((item) => (
-                      <Pill key={item}>{item}</Pill>
-                    ))}
-                  </div>
-                  <SoftPanel className="mt-5 p-4 text-sm italic leading-7 text-primary">
-                    “好的网站应该像落日余晖一样，温暖、清晰，而且不打断阅读。”
-                  </SoftPanel>
-                </GlassPanel>
-              </Reveal>
-            </div>
-          </section>
-
-          <Reveal delay={0.2}>
-            <section className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
               <GlassPanel className="p-4">
                 <div className="grid h-full gap-3 sm:grid-cols-3">
                   {siteConfig.gallery.map((image, index) => (
@@ -215,15 +205,22 @@ export default function AboutPage() {
                   ))}
                 </div>
               </GlassPanel>
+            </section>
+          </Reveal>
 
-              <GlassPanel className="p-6">
-                <h3 className="font-heading text-lg font-black tracking-[-0.04em] text-foreground">
-                  留言 / Message
-                </h3>
-                <p className="mt-3 text-sm leading-7 text-muted-foreground">
-                  如果你也在做内容型网站、编辑器或偏个人表达的网站结构，可以来聊。
-                </p>
-                <form className="mt-5 space-y-3">
+          <Reveal delay={0.16}>
+            <GlassPanel className="p-6 sm:p-8">
+              <div className="grid gap-6 xl:grid-cols-[0.82fr_1.18fr] xl:items-start">
+                <div className="space-y-3">
+                  <h3 className="font-heading text-2xl font-black tracking-[-0.05em] text-foreground">
+                    留言 / Message
+                  </h3>
+                  <p className="text-sm leading-7 text-muted-foreground">
+                    如果你也在做内容型网站、编辑器或偏个人表达的网站结构，可以来聊。这里保留了一块更轻盈的联系区域，而不是把表单单独拉成长栏。
+                  </p>
+                </div>
+
+                <form className="space-y-3">
                   <div className="grid gap-3 sm:grid-cols-2">
                     <input className="rounded-[18px] bg-white/72 px-4 py-3 text-sm outline-none" placeholder="Name" />
                     <input
@@ -244,8 +241,8 @@ export default function AboutPage() {
                     <Send className="h-4 w-4" />
                   </button>
                 </form>
-              </GlassPanel>
-            </section>
+              </div>
+            </GlassPanel>
           </Reveal>
         </div>
       </section>

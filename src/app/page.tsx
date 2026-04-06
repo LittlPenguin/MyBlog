@@ -1,15 +1,10 @@
 import Image from "next/image";
-import { CalendarDays, Palette, PawPrint, Pin, Plus, Star, Workflow } from "lucide-react";
+import { Palette, PawPrint, Pin, Plus, Sparkles, Star, Workflow } from "lucide-react";
 import { Reveal } from "@/components/motion/reveal";
+import { HomeLivePanels } from "@/components/site/home-live-panels";
 import { RouteLink } from "@/components/site/route-link";
 import { homeBoard } from "@/content/home-board";
 import { cn } from "@/lib/utils";
-
-export const unstable_instant = {
-  prefetch: "static",
-} as const;
-
-const weekDays = ["S", "M", "T", "W", "T", "F", "S"];
 
 function BoardCard({
   className,
@@ -41,12 +36,8 @@ export default function HomePage() {
             <span className="scrapbook-pin" aria-hidden="true" />
             <div className="home-board-hero-copy">
               <div>
-                <h1 className="home-board-hero-title" style={{ viewTransitionName: "page-title" }}>
-                  {homeBoard.greeting}
-                </h1>
-                <p className="home-board-hero-lead" style={{ viewTransitionName: "page-eyebrow" }}>
-                  {homeBoard.lead}
-                </p>
+                <h1 className="home-board-hero-title">{homeBoard.greeting}</h1>
+                <p className="home-board-hero-lead">{homeBoard.lead}</p>
               </div>
 
               <div className="home-board-hero-actions">
@@ -59,14 +50,13 @@ export default function HomePage() {
               </div>
             </div>
 
-            <div className="home-board-hero-image">
+            <div className="home-board-hero-image home-board-hero-visual">
               <Image
-                src={homeBoard.heroImage}
-                alt="Warm sunset cat card"
-                width={300}
-                height={300}
-                preload
-                unoptimized
+                src="/visuals/sunset-card.svg"
+                alt="Warm sunset studio card"
+                width={320}
+                height={320}
+                priority
                 className="h-full w-full object-cover"
               />
             </div>
@@ -75,48 +65,12 @@ export default function HomePage() {
 
         <div className="home-board-sidecards">
           <Reveal delay={0.08}>
-            <BoardCard className="board-widget-card">
-              <div className="board-widget-header">
-                <span>{homeBoard.currentTimeLabel}</span>
-                <CalendarDays className="h-4 w-4 text-primary" />
-              </div>
-              <div className="board-clock-face">
-                <span className="board-clock-time">
-                  {homeBoard.currentTimeValue}
-                  <span className="board-clock-seconds">{homeBoard.currentTimeSeconds}</span>
-                </span>
-              </div>
-              <p className="board-widget-caption">{homeBoard.currentTimeZone}</p>
-            </BoardCard>
-          </Reveal>
-
-          <Reveal delay={0.12}>
-            <BoardCard className="board-widget-card">
-              <div className="board-widget-header">
-                <span>{homeBoard.calendarLabel}</span>
-                <CalendarDays className="h-4 w-4 text-primary" />
-              </div>
-
-              <div className="board-calendar">
-                {weekDays.map((item, index) => (
-                  <span key={`${item}-${index}`} className="board-calendar-weekday">
-                    {item}
-                  </span>
-                ))}
-                {homeBoard.calendarDays.map((item) => (
-                  <span
-                    key={`${item.day}-${item.muted ? "muted" : "live"}`}
-                    className={cn(
-                      "board-calendar-day",
-                      item.muted && "board-calendar-day-muted",
-                      item.active && "board-calendar-day-active",
-                    )}
-                  >
-                    {item.day}
-                  </span>
-                ))}
-              </div>
-            </BoardCard>
+            <div>
+              <HomeLivePanels
+                currentTimeLabel={homeBoard.currentTimeLabel}
+                calendarIconLabel={homeBoard.calendarLabel}
+              />
+            </div>
           </Reveal>
         </div>
 
@@ -192,7 +146,7 @@ export default function HomePage() {
         <Reveal className="home-board-footer" delay={0.3}>
           <div className="board-footer-strip">
             <div className="board-footer-note">
-              <Star className="h-4 w-4 text-primary" />
+              <Sparkles className="h-4 w-4 text-primary" />
               <p>{homeBoard.footerNote}</p>
             </div>
             <div className="board-footer-meta">
@@ -211,12 +165,11 @@ export default function HomePage() {
         <div className="home-floating-card">
           <div className="home-floating-frame">
             <Image
-              src={homeBoard.floatingImage}
+              src="/visuals/moments-card.svg"
               alt="Moments captured"
-              width={200}
-              height={200}
-              unoptimized
-              className="h-full w-full rounded-[1rem] object-cover grayscale transition duration-500 hover:grayscale-0"
+              width={240}
+              height={240}
+              className="h-full w-full rounded-[1rem] object-cover"
             />
           </div>
           <p className="home-floating-note">{homeBoard.floatingNote}</p>
