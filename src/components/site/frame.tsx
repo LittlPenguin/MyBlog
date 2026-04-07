@@ -20,17 +20,7 @@ import { cn } from "@/lib/utils";
 import { RouteLink } from "./route-link";
 import { PageTransitionProvider, usePageTransition } from "./transition-context";
 
-type OverlaySnapshot = {
-  transitionId: number;
-  fromPathname: string;
-  toPathname: string;
-  html: string;
-  width: number;
-  height: number;
-};
-
-const EXIT_SETTLE_MS = 180;
-const ENTER_SETTLE_MS = 620;
+const ENTER_SETTLE_MS = 680;
 
 function resolveNavIcon(icon: NavItem["icon"]) {
   switch (icon) {
@@ -152,36 +142,16 @@ function FloatingAction({ motionEnabled }: { motionEnabled: boolean }) {
   );
 }
 
-function createSnapshot(element: HTMLElement) {
-  const clone = element.cloneNode(true);
-
-  if (!(clone instanceof HTMLElement)) {
-    return null;
-  }
-
-  clone.removeAttribute("id");
-  clone.querySelectorAll("[data-route-overlay-ignore]").forEach((node) => node.remove());
-  clone.querySelectorAll("script").forEach((node) => node.remove());
-  clone.querySelectorAll("video, audio").forEach((node) => node.remove());
-
-  const rect = element.getBoundingClientRect();
-
-  return {
-    html: clone.innerHTML,
-    width: rect.width,
-    height: rect.height,
-  };
-}
-
 function AppFrameInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const prefersReducedMotion = useReducedMotion();
   const { activeTransition, phase, setPhase, finishTransition, cancelTransition } = usePageTransition();
   const [mounted, setMounted] = useState(false);
-  const [overlaySnapshot, setOverlaySnapshot] = useState<OverlaySnapshot | null>(null);
+  const [stageReady, setStageReady] = useState(false);
   const stageRef = useRef<HTMLDivElement | null>(null);
   const settleTimerRef = useRef<number | null>(null);
+  const stageProbeRef = useRef<number | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -200,12 +170,19 @@ function AppFrameInner({ children }: { children: React.ReactNode }) {
       if (settleTimerRef.current !== null) {
         window.clearTimeout(settleTimerRef.current);
       }
+      if (stageProbeRef.current !== null) {
+        window.cancelAnimationFrame(stageProbeRef.current);
+      }
     };
   }, []);
 
   const motionEnabled = mounted && !prefersReducedMotion;
-  const overlayVisible = motionEnabled && !!overlaySnapshot;
+  const routeMotionEnabled = mounted;
+  const overlaySnapshot = activeTransition?.snapshot ?? null;
+  const overlayVisible = routeMotionEnabled && !!overlaySnapshot;
   const waitingForTarget = !!activeTransition && pathname !== activeTransition.toPathname;
+  const isHoldingTarget = !!activeTransition && pathname === activeTransition.toPathname && !stageReady;
+  const isTransitionPending = waitingForTarget || isHoldingTarget;
   const routeProgress = useMemo(() => {
     if (!activeTransition) {
       return "0%";
@@ -215,69 +192,63 @@ function AppFrameInner({ children }: { children: React.ReactNode }) {
       return "100%";
     }
 
-    return waitingForTarget ? "58%" : "84%";
-  }, [activeTransition, phase, waitingForTarget]);
+    return isTransitionPending ? "76%" : "88%";
+  }, [activeTransition, isTransitionPending, phase]);
 
   useEffect(() => {
-    if (!motionEnabled) {
-      if (overlaySnapshot) {
-        setOverlaySnapshot(null);
-      }
+    if (!routeMotionEnabled) {
       if (activeTransition) {
         cancelTransition(activeTransition.id);
       }
       return;
     }
-
-    if (!activeTransition || !stageRef.current) {
-      return;
-    }
-
-    setOverlaySnapshot((current) => {
-      if (current?.transitionId === activeTransition.id) {
-        return current;
-      }
-
-      const snapshot = createSnapshot(stageRef.current!);
-
-      if (!snapshot) {
-        return null;
-      }
-
-      return {
-        transitionId: activeTransition.id,
-        fromPathname: activeTransition.fromPathname,
-        toPathname: activeTransition.toPathname,
-        html: snapshot.html,
-        width: snapshot.width,
-        height: snapshot.height,
-      };
-    });
-
-    setPhase("exiting");
-  }, [activeTransition, cancelTransition, motionEnabled, overlaySnapshot, setPhase]);
+  }, [activeTransition, cancelTransition, routeMotionEnabled]);
 
   useEffect(() => {
-    if (!activeTransition || !overlaySnapshot) {
+    if (!activeTransition || !stageRef.current) {
+      setStageReady(false);
       return;
     }
 
     if (pathname !== activeTransition.toPathname) {
+      setStageReady(false);
       return;
     }
 
-    setPhase("entering");
+    const verifyStageReady = () => {
+      if (!stageRef.current) {
+        return;
+      }
 
-    if (settleTimerRef.current !== null) {
-      window.clearTimeout(settleTimerRef.current);
-    }
+      const hasLoadingShell = !!stageRef.current.querySelector(".page-loading-shell");
 
-    settleTimerRef.current = window.setTimeout(() => {
-      setOverlaySnapshot((current) => (current?.transitionId === activeTransition.id ? null : current));
-      finishTransition(activeTransition.id);
-      settleTimerRef.current = null;
-    }, ENTER_SETTLE_MS);
-  }, [activeTransition, finishTransition, overlaySnapshot, pathname, setPhase]);
+      if (hasLoadingShell) {
+        stageProbeRef.current = window.requestAnimationFrame(verifyStageReady);
+        return;
+      }
+
+      setStageReady(true);
+      setPhase("entering");
+
+      if (settleTimerRef.current !== null) {
+        window.clearTimeout(settleTimerRef.current);
+      }
+
+      settleTimerRef.current = window.setTimeout(() => {
+        finishTransition(activeTransition.id);
+        settleTimerRef.current = null;
+      }, ENTER_SETTLE_MS);
+    };
+
+    verifyStageReady();
+
+    return () => {
+      if (stageProbeRef.current !== null) {
+        window.cancelAnimationFrame(stageProbeRef.current);
+        stageProbeRef.current = null;
+      }
+    };
+  }, [activeTransition, finishTransition, pathname, setPhase]);
 
   return (
     <LayoutGroup id="site-shell">
@@ -296,31 +267,41 @@ function AppFrameInner({ children }: { children: React.ReactNode }) {
                 <span className="shell-route-meter-fill" style={{ width: routeProgress }} />
               </div>
 
-              <div className="shell-main-stage" ref={stageRef}>
+              <div className="shell-main-stage" ref={stageRef} data-route-stage="main">
                 <motion.main
                   key={pathname}
                   className={cn("shell-main shell-main-layer", overlayVisible && "shell-main-layer-current")}
-                  initial={motionEnabled ? { opacity: 0.3, x: 26, y: 22, scale: 0.92, rotate: 2.2 } : false}
+                  initial={
+                    routeMotionEnabled
+                      ? {
+                          opacity: activeTransition ? 0.24 : 0.4,
+                          x: activeTransition ? 42 : 22,
+                          y: activeTransition ? 28 : 18,
+                          scaleX: activeTransition ? 0.9 : 0.95,
+                          scaleY: activeTransition ? 0.84 : 0.94,
+                          rotate: activeTransition ? 3.4 : 1.2,
+                          filter: activeTransition ? "blur(18px) saturate(0.82)" : "blur(10px) saturate(0.9)",
+                        }
+                      : false
+                  }
                   animate={{
-                    opacity: activeTransition ? (waitingForTarget ? 0.16 : 1) : 1,
-                    x: activeTransition ? (waitingForTarget ? 34 : 0) : 0,
-                    y: activeTransition ? (waitingForTarget ? 20 : 0) : 0,
-                    scale: activeTransition ? (waitingForTarget ? 0.93 : 1) : 1,
-                    rotate: activeTransition ? (waitingForTarget ? 1.4 : 0) : 0,
-                    filter: activeTransition
-                      ? waitingForTarget
-                        ? "blur(10px) saturate(0.88)"
-                        : "blur(0px) saturate(1)"
-                      : "blur(0px) saturate(1)",
+                    opacity: waitingForTarget ? 0.14 : 1,
+                    x: waitingForTarget ? 42 : 0,
+                    y: waitingForTarget ? 24 : 0,
+                    scaleX: waitingForTarget ? 0.91 : 1,
+                    scaleY: waitingForTarget ? 0.86 : 1,
+                    rotate: waitingForTarget ? 2.6 : 0,
+                    filter: waitingForTarget ? "blur(12px) saturate(0.84)" : "blur(0px) saturate(1)",
                   }}
                   transition={
-                    motionEnabled
+                    routeMotionEnabled
                       ? {
-                          x: { type: "spring", stiffness: 210, damping: 18, mass: 0.78 },
-                          y: { type: "spring", stiffness: 220, damping: 18, mass: 0.82 },
-                          scale: { type: "spring", stiffness: 260, damping: 16, mass: 0.72 },
-                          rotate: { type: "spring", stiffness: 220, damping: 18, mass: 0.84 },
-                          opacity: { duration: 0.24, ease: [0.22, 1, 0.36, 1] },
+                          x: { type: "spring", stiffness: 248, damping: 16, mass: 0.78 },
+                          y: { type: "spring", stiffness: 228, damping: 16, mass: 0.8 },
+                          scaleX: { type: "spring", stiffness: 280, damping: 13, mass: 0.7 },
+                          scaleY: { type: "spring", stiffness: 262, damping: 12, mass: 0.68 },
+                          rotate: { type: "spring", stiffness: 220, damping: 16, mass: 0.8 },
+                          opacity: { duration: 0.26, ease: [0.22, 1, 0.36, 1] },
                           filter: { duration: 0.28, ease: [0.22, 1, 0.36, 1] },
                         }
                       : undefined
@@ -331,8 +312,12 @@ function AppFrameInner({ children }: { children: React.ReactNode }) {
 
                 {overlaySnapshot ? (
                   <motion.div
-                    key={`${overlaySnapshot.fromPathname}-${overlaySnapshot.transitionId}`}
-                    className="shell-main shell-main-layer shell-main-layer-overlay"
+                    key={`${activeTransition?.fromPathname ?? pathname}-${activeTransition?.id ?? 0}`}
+                    className={cn(
+                      "shell-main shell-main-layer shell-main-layer-overlay",
+                      phase === "exiting" && "shell-main-layer-overlay-holding",
+                    )}
+                    data-route-overlay-ignore
                     style={{
                       width: overlaySnapshot.width,
                       minHeight: overlaySnapshot.height,
@@ -350,42 +335,42 @@ function AppFrameInner({ children }: { children: React.ReactNode }) {
                       phase === "entering"
                         ? {
                             opacity: 0,
-                            x: -88,
-                            y: -34,
-                            scaleX: 0.86,
-                            scaleY: 0.8,
-                            rotate: -5.6,
-                            filter: "blur(18px) saturate(0.88)",
+                            x: -96,
+                            y: -40,
+                            scaleX: 0.84,
+                            scaleY: 0.74,
+                            rotate: -5.8,
+                            filter: "blur(20px) saturate(0.84)",
                           }
                         : {
-                            opacity: 0.96,
-                            x: -10,
-                            y: -10,
-                            scaleX: 0.985,
-                            scaleY: 0.966,
-                            rotate: -0.8,
-                            filter: "blur(2px) saturate(0.98)",
+                            opacity: 1,
+                            x: -18,
+                            y: -14,
+                            scaleX: 0.978,
+                            scaleY: 0.948,
+                            rotate: -1.1,
+                            filter: "blur(3px) saturate(0.98)",
                           }
                     }
                     transition={
                       phase === "entering"
                         ? {
-                            x: { type: "spring", stiffness: 170, damping: 13, mass: 0.9 },
-                            y: { type: "spring", stiffness: 160, damping: 12, mass: 0.92 },
-                            scaleX: { type: "spring", stiffness: 240, damping: 11, mass: 0.56 },
-                            scaleY: { type: "spring", stiffness: 220, damping: 10, mass: 0.52 },
-                            rotate: { type: "spring", stiffness: 190, damping: 13, mass: 0.78 },
-                            opacity: { duration: 0.24, ease: [0.18, 0.88, 0.18, 1] },
+                            x: { type: "spring", stiffness: 176, damping: 14, mass: 0.92 },
+                            y: { type: "spring", stiffness: 166, damping: 13, mass: 0.94 },
+                            scaleX: { type: "spring", stiffness: 244, damping: 12, mass: 0.58 },
+                            scaleY: { type: "spring", stiffness: 226, damping: 11, mass: 0.56 },
+                            rotate: { type: "spring", stiffness: 196, damping: 13, mass: 0.8 },
+                            opacity: { duration: 0.26, ease: [0.18, 0.88, 0.18, 1] },
                             filter: { duration: 0.3, ease: [0.18, 0.88, 0.18, 1] },
                           }
                         : {
-                            x: { duration: EXIT_SETTLE_MS / 1000, ease: [0.22, 1, 0.36, 1] },
-                            y: { duration: EXIT_SETTLE_MS / 1000, ease: [0.22, 1, 0.36, 1] },
-                            scaleX: { duration: EXIT_SETTLE_MS / 1000, ease: [0.22, 1, 0.36, 1] },
-                            scaleY: { duration: EXIT_SETTLE_MS / 1000, ease: [0.22, 1, 0.36, 1] },
-                            rotate: { duration: EXIT_SETTLE_MS / 1000, ease: [0.22, 1, 0.36, 1] },
-                            opacity: { duration: EXIT_SETTLE_MS / 1000, ease: [0.22, 1, 0.36, 1] },
-                            filter: { duration: EXIT_SETTLE_MS / 1000, ease: [0.22, 1, 0.36, 1] },
+                            x: { duration: 0.2, ease: [0.22, 1, 0.36, 1] },
+                            y: { duration: 0.2, ease: [0.22, 1, 0.36, 1] },
+                            scaleX: { duration: 0.2, ease: [0.22, 1, 0.36, 1] },
+                            scaleY: { duration: 0.2, ease: [0.22, 1, 0.36, 1] },
+                            rotate: { duration: 0.2, ease: [0.22, 1, 0.36, 1] },
+                            opacity: { duration: 0.2, ease: [0.22, 1, 0.36, 1] },
+                            filter: { duration: 0.2, ease: [0.22, 1, 0.36, 1] },
                           }
                     }
                   >

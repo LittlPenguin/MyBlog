@@ -2,9 +2,15 @@
 
 import Link, { type LinkProps } from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffectEvent } from "react";
+import { startTransition, useEffectEvent } from "react";
 import { cn } from "@/lib/utils";
 import { usePageTransition } from "./transition-context";
+import {
+  captureRouteStageSnapshot,
+  getRouteStageElement,
+  resolveTransitionPathname,
+  waitForAnimationFrames,
+} from "./transition-utils";
 
 type RouteLinkProps = LinkProps &
   Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, "href"> & {
@@ -27,7 +33,7 @@ export function RouteLink({
 }: RouteLinkProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const { beginTransition, cancelTransition } = usePageTransition();
+  const { beginTransition, isCurrentTransition, cancelTransition } = usePageTransition();
   const hrefValue =
     typeof href === "string"
       ? href
@@ -50,7 +56,7 @@ export function RouteLink({
     void router.prefetch(hrefValue);
   });
 
-  const handleClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
+  const handleClick = async (event: React.MouseEvent<HTMLAnchorElement>) => {
     onClick?.(event);
 
     const isExternal = hrefValue ? /^(https?:|mailto:|tel:)/.test(hrefValue) : false;
@@ -76,39 +82,49 @@ export function RouteLink({
       return;
     }
 
-    const reducedMotion =
-      typeof window !== "undefined" &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
     const nextScroll = preserveScroll ? false : (scroll ?? true);
-
-    if (reducedMotion) {
-      return;
-    }
+    const routeStage = getRouteStageElement();
+    const snapshot = routeStage ? captureRouteStageSnapshot(routeStage) : null;
+    const toPathname = resolveTransitionPathname(hrefValue);
 
     event.preventDefault();
+
+    if (!snapshot) {
+      const navigateWithoutTransition = replace ? router.replace : router.push;
+      navigateWithoutTransition(hrefValue, { scroll: nextScroll });
+      return;
+    }
 
     const transitionId = beginTransition({
       href: hrefValue,
       fromPathname: pathname,
-      toPathname: hrefValue.split("#")[0]?.split("?")[0] ?? hrefValue,
+      toPathname,
       key: transitionKey ?? hrefValue,
       replace: replace ?? false,
       scroll: nextScroll,
+      snapshot,
     });
 
     const navigate = replace ? router.replace : router.push;
 
     try {
-      navigate(hrefValue, { scroll: nextScroll });
+      await waitForAnimationFrames(2);
+
+      if (!isCurrentTransition(transitionId)) {
+        return;
+      }
+
+      startTransition(() => {
+        navigate(hrefValue, { scroll: nextScroll });
+      });
     } catch (error) {
-      cancelTransition();
+      cancelTransition(transitionId);
       throw error;
     }
 
     window.setTimeout(() => {
       cancelTransition(transitionId);
-    }, 2400);
+    }, 4000);
   };
 
   return (

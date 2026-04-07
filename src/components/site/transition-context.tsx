@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
+import type { RouteStageSnapshot } from "./transition-utils";
 
 type TransitionState = {
   id: number;
@@ -10,6 +11,8 @@ type TransitionState = {
   key: string;
   replace: boolean;
   scroll: boolean;
+  startedAt: number;
+  snapshot: RouteStageSnapshot;
 } | null;
 
 export type TransitionPhase = "idle" | "exiting" | "entering";
@@ -21,6 +24,7 @@ type BeginTransitionInput = {
   key: string;
   replace: boolean;
   scroll: boolean;
+  snapshot: RouteStageSnapshot;
 };
 
 type TransitionContextValue = {
@@ -28,6 +32,7 @@ type TransitionContextValue = {
   phase: TransitionPhase;
   beginTransition: (input: BeginTransitionInput) => number;
   setPhase: (phase: TransitionPhase) => void;
+  isCurrentTransition: (transitionId: number) => boolean;
   cancelTransition: (transitionId?: number) => void;
   finishTransition: (transitionId?: number) => void;
 };
@@ -38,10 +43,12 @@ export function PageTransitionProvider({ children }: { children: React.ReactNode
   const [activeTransition, setActiveTransition] = useState<TransitionState>(null);
   const [phase, setPhase] = useState<TransitionPhase>("idle");
   const sequenceRef = useRef(0);
+  const activeIdRef = useRef<number | null>(null);
 
   const beginTransition = useCallback((input: BeginTransitionInput) => {
     sequenceRef.current += 1;
     const id = sequenceRef.current;
+    activeIdRef.current = id;
 
     setPhase("exiting");
     setActiveTransition({
@@ -52,30 +59,32 @@ export function PageTransitionProvider({ children }: { children: React.ReactNode
       key: input.key,
       replace: input.replace,
       scroll: input.scroll,
+      startedAt: Date.now(),
+      snapshot: input.snapshot,
     });
 
     return id;
   }, []);
 
-  const cancelTransition = useCallback((transitionId?: number) => {
-    setActiveTransition((current) => {
-      if (transitionId && current && current.id !== transitionId) {
-        return current;
-      }
+  const isCurrentTransition = useCallback((transitionId: number) => activeIdRef.current === transitionId, []);
 
-      return null;
-    });
+  const cancelTransition = useCallback((transitionId?: number) => {
+    if (transitionId && activeIdRef.current !== transitionId) {
+      return;
+    }
+
+    activeIdRef.current = null;
+    setActiveTransition(null);
     setPhase("idle");
   }, []);
 
   const finishTransition = useCallback((transitionId?: number) => {
-    setActiveTransition((current) => {
-      if (transitionId && current && current.id !== transitionId) {
-        return current;
-      }
+    if (transitionId && activeIdRef.current !== transitionId) {
+      return;
+    }
 
-      return null;
-    });
+    activeIdRef.current = null;
+    setActiveTransition(null);
     setPhase("idle");
   }, []);
 
@@ -85,10 +94,11 @@ export function PageTransitionProvider({ children }: { children: React.ReactNode
       phase,
       beginTransition,
       setPhase,
+      isCurrentTransition,
       cancelTransition,
       finishTransition,
     }),
-    [activeTransition, phase, beginTransition, cancelTransition, finishTransition],
+    [activeTransition, phase, beginTransition, isCurrentTransition, cancelTransition, finishTransition],
   );
 
   return <TransitionContext.Provider value={value}>{children}</TransitionContext.Provider>;
