@@ -1,9 +1,15 @@
 import type { MetadataRoute } from "next";
 import { getAllPosts } from "@/lib/posts";
+import { getAllProjects } from "@/lib/projects";
+import { getAllResources } from "@/lib/resources";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = "https://example.com";
-  const posts = await getAllPosts();
+  const [posts, projects, resources] = await Promise.all([
+    getAllPosts(),
+    getAllProjects(),
+    getAllResources(),
+  ]);
 
   const routes = ["", "/archive", "/projects", "/resources", "/about"].map((route) => ({
     url: `${baseUrl}${route}`,
@@ -15,5 +21,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     lastModified: new Date(post.date),
   }));
 
-  return [...routes, ...postRoutes];
+  const projectRoutes = projects.map((project) => ({
+    url: `${baseUrl}/projects/${project.slug}`,
+    lastModified: new Date(project.date),
+  }));
+
+  const resourceRoutes = resources.map((resource) => ({
+    url: `${baseUrl}/resources/${resource.slug}`,
+    lastModified: new Date(resource.date),
+  }));
+
+  return [...routes, ...postRoutes, ...projectRoutes, ...resourceRoutes];
 }

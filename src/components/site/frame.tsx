@@ -119,7 +119,7 @@ function SideNavigation() {
         </nav>
       </div>
 
-      <RouteLink href="/posts/building-a-calm-interface" transitionKey="nav-editor" className="shell-editor-link">
+      <RouteLink href="/editor" transitionKey="nav-editor" className="shell-editor-link">
         <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/22">
           <Settings2 className="h-4 w-4" />
         </span>
@@ -158,7 +158,7 @@ function AppFrameInner({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    const routesToWarm = ["/", "/about", "/projects", "/resources", "/archive", "/posts/building-a-calm-interface"];
+    const routesToWarm = ["/", "/about", "/projects", "/resources", "/archive", "/editor", "/posts/building-a-calm-interface"];
 
     routesToWarm.forEach((href) => {
       void router.prefetch(href);

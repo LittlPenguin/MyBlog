@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { ArrowUpRight, Boxes, Grid2x2, Sparkles, SquareStack } from "lucide-react";
 import { Reveal } from "@/components/motion/reveal";
+import { RouteLink } from "@/components/site/route-link";
 import { GlassPanel, Pill } from "@/components/site/ui";
-import { projects } from "@/content/site";
+import { getAllProjects } from "@/lib/projects";
 
 export const metadata: Metadata = {
   title: "项目",
@@ -35,7 +36,9 @@ function projectIcon(icon: "grid" | "spark" | "pen" | "layers") {
   }
 }
 
-export default function ProjectsPage() {
+export default async function ProjectsPage() {
+  const projects = await getAllProjects();
+
   return (
     <div className="space-y-6 pb-8 pt-2">
       <Reveal>
@@ -72,9 +75,15 @@ export default function ProjectsPage() {
                   </div>
 
                   <div>
-                    <h2 className="font-heading text-2xl font-black tracking-[-0.05em] text-foreground transition group-hover:text-primary">
-                      {project.title}
-                    </h2>
+                    <RouteLink
+                      href={`/projects/${project.slug}`}
+                      transitionKey={`project-${project.slug}`}
+                      className="block"
+                    >
+                      <h2 className="font-heading text-2xl font-black tracking-[-0.05em] text-foreground transition group-hover:text-primary">
+                        {project.title}
+                      </h2>
+                    </RouteLink>
                     <div className="mt-3 flex flex-wrap gap-2">
                       {project.stack.map((item) => (
                         <Pill key={item}>{item}</Pill>

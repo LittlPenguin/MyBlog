@@ -6,8 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "test": "node --experimental-specifier-resolution=node --test --experimental-strip-types src/lib/*.test.mjs",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "node -e \"require('node:fs').rmSync('.next/types',{recursive:true,force:true}); require('node:fs').rmSync('.next/dev/types',{recursive:true,force:true})\" && next typegen && node scripts/sync-next-typegen.mjs && tsc --noEmit --incremental false"
   },
   "dependencies": {
     "@next/mdx": "^16.2.1",
@@ -19,6 +20,7 @@
     "next-mdx-remote": "^6.0.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "react-markdown": "^10.1.0",
     "reading-time": "^1.5.0",
     "rehype-autolink-headings": "^7.1.0",
     "rehype-slug": "^6.0.0",

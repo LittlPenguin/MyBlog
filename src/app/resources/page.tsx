@@ -1,7 +1,13 @@
 import { Suspense } from "react";
-import { resources } from "@/content/site";
 import { GlassPanel, Pill, SoftPanel } from "@/components/site/ui";
-import { getResourceCategories, normalizeResourceFilters, type ResourceFilters } from "@/lib/resources";
+import {
+  normalizeResourceFiltersWithCategories,
+  type ResourceFilters,
+} from "@/lib/resources-shared";
+import {
+  getAllResources,
+  getResourceCategories,
+} from "@/lib/resources";
 import { ResourcesClient } from "./resources-client";
 
 type PageProps = {
@@ -53,9 +59,10 @@ function ResourcesFallback() {
 
 async function ResourcesPageContent({ searchParams }: PageProps) {
   const resolvedSearchParams = await searchParams;
-  const filters = normalizeResourceFilters(resolvedSearchParams);
+  const [resources, categories] = await Promise.all([getAllResources(), getResourceCategories()]);
+  const filters = normalizeResourceFiltersWithCategories(resolvedSearchParams, categories);
 
-  return <ResourcesClient initialFilters={filters} resources={resources} categories={getResourceCategories()} />;
+  return <ResourcesClient initialFilters={filters} resources={resources} categories={categories} />;
 }
 
 export default function ResourcesPage({ searchParams }: PageProps) {

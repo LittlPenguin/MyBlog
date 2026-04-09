@@ -73,20 +73,24 @@ function ArchiveBoardSkeleton() {
 
 async function ArchiveBoardContent() {
   const posts = await getAllPosts();
-  const columns = [
-    {
-      ...ARCHIVE_COLUMNS[0],
-      items: posts.slice(0, 3),
-    },
-    {
-      ...ARCHIVE_COLUMNS[1],
-      items: posts.slice(0, 3).reverse(),
-    },
-    {
-      ...ARCHIVE_COLUMNS[2],
-      items: posts.slice(0, 3),
-    },
-  ];
+  const grouped = posts.reduce<Record<string, typeof posts>>((accumulator, post) => {
+    if (!accumulator[post.category]) {
+      accumulator[post.category] = [];
+    }
+
+    accumulator[post.category].push(post);
+    return accumulator;
+  }, {});
+
+  const columns = Object.entries(grouped)
+    .sort((a, b) => b[1].length - a[1].length)
+    .slice(0, 3)
+    .map(([title, items], index) => ({
+      title,
+      badge: `GROUP / ${items.length.toString().padStart(2, "0")}`,
+      tags: Array.from(new Set(items.flatMap((post) => post.tags))).slice(0, 3),
+      items: items.slice(0, Math.max(3, index === 0 ? 4 : 3)),
+    }));
 
   return (
     <section className="editorial-grid lg:grid-cols-3">

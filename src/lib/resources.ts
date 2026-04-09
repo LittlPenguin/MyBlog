@@ -1,41 +1,85 @@
-import { resources, type ResourceItem } from "@/content/site";
+import path from "node:path";
+import matter from "gray-matter";
+import fs from "node:fs/promises";
+import { readCollectionItems } from "./content.js";
+import {
+  ALL_RESOURCES_CATEGORY,
+  normalizeResourceFiltersWithCategories,
+  type ResourceFilters,
+  type ResourceItem,
+} from "./resources-shared.js";
+const RESOURCES_DIR = path.join(process.cwd(), "src", "content", "resources");
 
-export const ALL_RESOURCES_CATEGORY = "全部";
+function createResourceMonogram(title: string) {
+  const parts = title
+    .split(/[\s-]+/)
+    .map((part) => part.trim())
+    .filter(Boolean);
 
-type SearchValue = string | string[] | undefined;
+  const letters = parts
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
 
-export type ResourceFilters = {
-  q?: SearchValue;
-  category?: SearchValue;
-};
+  return letters || title.slice(0, 2).toUpperCase() || "NT";
+}
 
-export function getResourceSlugs() {
+function normalizeResourceItem(resource: Partial<ResourceItem> & Pick<ResourceItem, "title" | "slug" | "summary" | "date" | "category" | "tags" | "featured" | "draft" | "hidden" | "assetNames">): ResourceItem {
+  return {
+    ...resource,
+    description: resource.description ?? resource.summary,
+    url: resource.url ?? `/resources/${resource.slug}`,
+    rating: resource.rating ?? 4,
+    accent: resource.accent ?? "primary",
+    monogram: resource.monogram ?? createResourceMonogram(resource.title),
+  };
+}
+
+export async function getAllResources() {
+  const items = await readCollectionItems<ResourceItem>(RESOURCES_DIR);
+
+  return items
+    .map((item) => normalizeResourceItem(item.meta))
+    .filter((resource) => !resource.draft)
+    .sort((a, b) => +new Date(b.date) - +new Date(a.date));
+}
+
+export async function getResourceSlugs() {
+  const resources = await getAllResources();
   return resources.map((resource) => resource.slug);
 }
 
-export function getResourceBySlug(slug: string) {
+export async function getResourceBySlug(slug: string) {
+  const resources = await getAllResources();
   return resources.find((resource) => resource.slug === slug) ?? null;
 }
 
-export function getResourceCategories() {
+export async function getResourceDetailBySlug(slug: string) {
+  const filePath = path.join(RESOURCES_DIR, `${slug}.mdx`);
+  const source = await fs.readFile(filePath, "utf8").catch(() => null);
+
+  if (!source) {
+    return null;
+  }
+
+  const { data, content } = matter(source);
+  const meta = normalizeResourceItem(data as ResourceItem);
+
+  return {
+    meta,
+    rawContent: content,
+  };
+}
+
+export async function getResourceCategories() {
+  const resources = await getAllResources();
   return [ALL_RESOURCES_CATEGORY, ...new Set(resources.map((resource) => resource.category))];
 }
 
-function readSearchValue(value: SearchValue) {
-  return Array.isArray(value) ? value[0] ?? "" : value ?? "";
-}
-
-export function normalizeResourceFilters(filters: ResourceFilters) {
-  const categories = getResourceCategories();
-  const q = readSearchValue(filters.q).trim();
-  const requestedCategory = readSearchValue(filters.category).trim();
-  const category = categories.includes(requestedCategory) ? requestedCategory : ALL_RESOURCES_CATEGORY;
-
-  return { q, category };
-}
-
-export function filterResources(filters: ResourceFilters) {
-  const { q, category } = normalizeResourceFilters(filters);
+export async function filterResources(filters: ResourceFilters) {
+  const resources = await getAllResources();
+  const categories = await getResourceCategories();
+  const { q, category } = normalizeResourceFiltersWithCategories(filters, categories);
   const normalized = q.toLowerCase();
 
   return resources.filter((resource) => {
@@ -47,13 +91,14 @@ export function filterResources(filters: ResourceFilters) {
   });
 }
 
-export function getRelatedResources(slug: string, limit = 3) {
-  const current = getResourceBySlug(slug);
+export async function getRelatedResources(slug: string, limit = 3) {
+  const current = await getResourceBySlug(slug);
 
   if (!current) {
     return [] as ResourceItem[];
   }
 
+  const resources = await getAllResources();
   const sameCategory = resources.filter(
     (resource) => resource.slug !== slug && resource.category === current.category,
   );
@@ -62,28 +107,4 @@ export function getRelatedResources(slug: string, limit = 3) {
   );
 
   return [...sameCategory, ...remainder].slice(0, limit);
-}
-
-export function buildResourcesHref(filters: ResourceFilters = {}) {
-  const { q, category } = normalizeResourceFilters(filters);
-  const params = new URLSearchParams();
-
-  if (q) {
-    params.set("q", q);
-  }
-
-  if (category && category !== ALL_RESOURCES_CATEGORY) {
-    params.set("category", category);
-  }
-
-  const query = params.toString();
-  return query ? `/resources?${query}` : "/resources";
-}
-
-export function buildResourceDetailHref(slug: string, filters: ResourceFilters = {}) {
-  const base = `/resources/${slug}`;
-  const listHref = buildResourcesHref(filters);
-  const queryIndex = listHref.indexOf("?");
-
-  return queryIndex === -1 ? base : `${base}${listHref.slice(queryIndex)}`;
 }

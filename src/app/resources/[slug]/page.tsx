@@ -4,15 +4,18 @@ import { notFound } from "next/navigation";
 import { Reveal } from "@/components/motion/reveal";
 import { RouteLink } from "@/components/site/route-link";
 import { GlassPanel, Pill, RatingStars, SoftPanel } from "@/components/site/ui";
-import { resources } from "@/content/site";
 import {
   buildResourceDetailHref,
   buildResourcesHref,
-  getRelatedResources,
-  getResourceBySlug,
-  getResourceSlugs,
   type ResourceFilters,
+} from "@/lib/resources-shared";
+import {
+  getAllResources,
+  getRelatedResources,
+  getResourceDetailBySlug,
+  getResourceSlugs,
 } from "@/lib/resources";
+import { ResourceDetailContent } from "../resource-detail-content";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -20,35 +23,36 @@ type PageProps = {
 };
 
 export async function generateStaticParams() {
-  return getResourceSlugs().map((slug) => ({ slug }));
+  const slugs = await getResourceSlugs();
+  return slugs.map((slug) => ({ slug }));
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const resource = getResourceBySlug(slug);
+  const resource = await getResourceDetailBySlug(slug);
 
   if (!resource) {
     return {};
   }
 
   return {
-    title: resource.title,
-    description: resource.description,
+    title: resource.meta.title,
+    description: resource.meta.description,
   };
 }
 
 export default async function ResourceDetailPage({ params, searchParams }: PageProps) {
   const { slug } = await params;
   const filters = await searchParams;
-  const resource = getResourceBySlug(slug);
+  const resource = await getResourceDetailBySlug(slug);
 
-  if (!resource) {
+  if (!resource || resource.meta.draft) {
     notFound();
   }
 
-  const related = getRelatedResources(resource.slug, 3);
+  const related = await getRelatedResources(resource.meta.slug, 3);
   const backHref = buildResourcesHref(filters);
-  const featuredCount = resources.filter((item) => item.featured).length;
+  const featuredCount = (await getAllResources()).filter((item) => item.featured).length;
 
   return (
     <div className="space-y-6 pb-8 pt-2">
@@ -57,7 +61,7 @@ export default async function ResourceDetailPage({ params, searchParams }: PageP
           <GlassPanel className="resource-detail-hero relative overflow-hidden p-6 sm:p-8">
             <div className="resource-detail-chip">
               <span className="resource-detail-chip-dot" aria-hidden="true" />
-              {resource.category}
+              {resource.meta.category}
             </div>
 
             <div className="resource-detail-copy">
@@ -73,18 +77,22 @@ export default async function ResourceDetailPage({ params, searchParams }: PageP
 
               <div className="space-y-4">
                 <h1 className="font-heading text-5xl font-black tracking-[-0.08em] text-foreground md:text-6xl">
-                  {resource.title}
+                  {resource.meta.title}
                 </h1>
-                <p className="max-w-2xl text-base leading-8 text-muted-foreground">{resource.description}</p>
+                <p className="max-w-2xl text-base leading-8 text-muted-foreground">
+                  {resource.meta.description}
+                </p>
               </div>
 
               <div className="resource-detail-meta">
                 <div className="flex items-center gap-3">
-                  <RatingStars value={resource.rating} />
-                  <span className="text-sm text-muted-foreground">{resource.rating}.0 / 5 curated score</span>
+                  <RatingStars value={resource.meta.rating} />
+                  <span className="text-sm text-muted-foreground">
+                    {resource.meta.rating}.0 / 5 curated score
+                  </span>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {resource.tags.map((tag) => (
+                  {resource.meta.tags.map((tag) => (
                     <Pill key={tag}>{tag}</Pill>
                   ))}
                 </div>
@@ -92,7 +100,7 @@ export default async function ResourceDetailPage({ params, searchParams }: PageP
 
               <div className="flex flex-wrap gap-3">
                 <a
-                  href={resource.url}
+                  href={resource.meta.url}
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-primary to-primary-strong px-5 py-3 text-sm font-semibold text-white shadow-[0_18px_36px_rgba(172,42,31,0.22)] transition hover:-translate-y-0.5"
@@ -101,7 +109,7 @@ export default async function ResourceDetailPage({ params, searchParams }: PageP
                   <ExternalLink className="h-4 w-4" />
                 </a>
                 <span className="inline-flex items-center rounded-full border border-white/60 bg-white/58 px-4 py-3 text-sm text-muted-foreground">
-                  {resource.url.replace(/^https?:\/\//, "")}
+                  {resource.meta.url.replace(/^https?:\/\//, "")}
                 </span>
               </div>
             </div>
@@ -117,7 +125,7 @@ export default async function ResourceDetailPage({ params, searchParams }: PageP
                 <SoftPanel className="p-4">
                   <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">分类</p>
                   <p className="mt-2 font-heading text-xl font-black tracking-[-0.04em] text-foreground">
-                    {resource.category}
+                    {resource.meta.category}
                   </p>
                 </SoftPanel>
                 <SoftPanel className="p-4">
@@ -127,9 +135,9 @@ export default async function ResourceDetailPage({ params, searchParams }: PageP
                   </p>
                 </SoftPanel>
                 <SoftPanel className="p-4">
-                  <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">站内中转</p>
+                  <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">站内承接</p>
                   <p className="mt-2 text-sm leading-7 text-muted-foreground">
-                    先通过站内详情承接，再跳向外部内容，返回时不再重刷资源列表的加载层。
+                    先通过站内详情承接，再跳向外部内容，返回时不会丢失当前筛选和浏览节奏。
                   </p>
                 </SoftPanel>
               </div>
@@ -167,6 +175,12 @@ export default async function ResourceDetailPage({ params, searchParams }: PageP
             </GlassPanel>
           </div>
         </section>
+      </Reveal>
+
+      <Reveal delay={0.05}>
+        <GlassPanel className="p-6 md:p-10">
+          <ResourceDetailContent source={resource.rawContent} />
+        </GlassPanel>
       </Reveal>
     </div>
   );

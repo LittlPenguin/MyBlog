@@ -3,14 +3,17 @@ import type { Metadata } from "next";
 import { Mail, MapPin, Milestone, Send, Sparkles } from "lucide-react";
 import { Reveal } from "@/components/motion/reveal";
 import { ActionLink, GlassPanel, Pill, SoftPanel } from "@/components/site/ui";
-import { aboutHighlights, aboutSkills, projects, siteConfig, socialLinks, timeline } from "@/content/site";
+import { aboutHighlights, aboutSkills, siteConfig, socialLinks, timeline } from "@/content/site";
+import { getAllProjects } from "@/lib/projects";
 
 export const metadata: Metadata = {
   title: "关于",
   description: "关于 YYsuni 的工作方式、创作节奏与内容型网站实践。",
 };
 
-export default function AboutPage() {
+export default async function AboutPage() {
+  const projects = await getAllProjects();
+
   return (
     <div className="space-y-6 pb-8 pt-2">
       <Reveal>

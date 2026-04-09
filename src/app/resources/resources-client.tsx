@@ -6,13 +6,13 @@ import { usePathname, useRouter } from "next/navigation";
 import { Reveal } from "@/components/motion/reveal";
 import { RouteLink } from "@/components/site/route-link";
 import { GlassPanel, Pill, RatingStars } from "@/components/site/ui";
-import type { ResourceItem } from "@/content/site";
 import {
   ALL_RESOURCES_CATEGORY,
   buildResourceDetailHref,
-  normalizeResourceFilters,
+  normalizeResourceFiltersWithCategories,
   type ResourceFilters,
-} from "@/lib/resources";
+  type ResourceItem,
+} from "@/lib/resources-shared";
 import { cn } from "@/lib/utils";
 
 type ResourcesClientProps = {
@@ -48,7 +48,7 @@ export function ResourcesClient({
   }, [category, deferredQuery, resources]);
 
   function replaceFilters(next: ResourceFilters) {
-    const normalized = normalizeResourceFilters(next);
+    const normalized = normalizeResourceFiltersWithCategories(next, categories);
     const params = new URLSearchParams();
 
     if (normalized.q) {
