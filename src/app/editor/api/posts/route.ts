@@ -1,11 +1,18 @@
 import { NextResponse } from "next/server";
-import { revalidatePath } from "next/cache";
-import { createEditorWritePayload, writeEditorContentFile } from "@/lib/content";
+import {
+  createEditorWritePayload,
+  updateEditorContentFile,
+} from "@/lib/content";
 import {
   type EditorSubmitPayload,
   validateEditorDraft,
 } from "@/lib/editor";
 import type { EditorWriteResult } from "@/lib/publish-shared";
+import {
+  editorContentRootDir,
+  revalidateEditorContentRoutes,
+  revalidatePreviousContentRoute,
+} from "../shared";
 
 export async function POST(request: Request) {
   let payload: EditorSubmitPayload;
@@ -36,29 +43,19 @@ export async function POST(request: Request) {
     );
   }
 
-  const result = await writeEditorContentFile({
-    rootDir: `${process.cwd().replaceAll("\\", "/")}/src/content`,
+  const result = await updateEditorContentFile({
+    rootDir: editorContentRootDir(),
     payload: prepared,
   });
 
   if (result.ok) {
-    revalidatePath("/");
-    revalidatePath("/about");
-    revalidatePath("/archive");
-    revalidatePath("/projects");
-    revalidatePath("/resources");
-    revalidatePath("/sitemap.xml");
+    revalidateEditorContentRoutes(result.category, result.slug);
 
-    if (result.category === "archive") {
-      revalidatePath(`/posts/${result.slug}`);
-    }
-
-    if (result.category === "resource") {
-      revalidatePath(`/resources/${result.slug}`);
-    }
-
-    if (result.category === "project") {
-      revalidatePath(`/projects/${result.slug}`);
+    if (
+      prepared.source &&
+      (prepared.source.originalCategory !== result.category || prepared.source.originalSlug !== result.slug)
+    ) {
+      revalidatePreviousContentRoute(prepared.source.originalCategory, prepared.source.originalSlug);
     }
   }
 

@@ -1,14 +1,18 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  applyEditorTitleChange,
   createEditorSubmitResult,
+  createDefaultEditorPreferences,
   createEmptyEditorDraft,
+  hasMeaningfulEditorChanges,
   deriveEditorDraftFromMarkdown,
   formatEditorFileSize,
   isImageEditorFile,
   normalizeSlug,
   normalizeTags,
   prepareEditorSubmitPayload,
+  resolveEditorPreferences,
   resolveEditorAssetKind,
   validateEditorDraft,
 } from "./editor.ts";
@@ -25,6 +29,47 @@ test("normalizeTags strips hashes and removes duplicate tags case-insensitively"
   ]);
 });
 
+test("createDefaultEditorPreferences returns the expected defaults", () => {
+  assert.deepEqual(createDefaultEditorPreferences(), {
+    defaultCategory: "archive",
+    defaultHidden: false,
+    autoSyncSlug: true,
+    preferFrontmatterOnImport: true,
+    defaultMode: "edit",
+  });
+});
+
+test("resolveEditorPreferences ignores invalid values and keeps valid overrides", () => {
+  assert.deepEqual(
+    resolveEditorPreferences({
+      defaultCategory: "project",
+      defaultHidden: true,
+      autoSyncSlug: false,
+      preferFrontmatterOnImport: false,
+      defaultMode: "preview",
+      extra: "ignored",
+    }),
+    {
+      defaultCategory: "project",
+      defaultHidden: true,
+      autoSyncSlug: false,
+      preferFrontmatterOnImport: false,
+      defaultMode: "preview",
+    },
+  );
+
+  assert.deepEqual(
+    resolveEditorPreferences({
+      defaultCategory: "invalid",
+      defaultHidden: "true",
+      autoSyncSlug: "false",
+      preferFrontmatterOnImport: 1,
+      defaultMode: "floating",
+    }),
+    createDefaultEditorPreferences(),
+  );
+});
+
 test("validateEditorDraft returns clear validation messages", () => {
   const errors = validateEditorDraft(createEmptyEditorDraft());
 
@@ -34,6 +79,27 @@ test("validateEditorDraft returns clear validation messages", () => {
     summary: "请输入文章摘要。",
     content: "请输入正文内容。",
   });
+});
+
+test("createEmptyEditorDraft applies default category and hidden state from preferences", () => {
+  assert.deepEqual(
+    createEmptyEditorDraft({
+      defaultCategory: "project",
+      defaultHidden: true,
+    }),
+    {
+      title: "",
+      slug: "",
+      summary: "",
+      content: "",
+      category: "project",
+      tags: [],
+      scheduleAt: null,
+      isHidden: true,
+      cover: null,
+      assets: [],
+    },
+  );
 });
 
 test("prepareEditorSubmitPayload trims fields and normalizes content", () => {
@@ -234,6 +300,39 @@ Body line 1.
   });
 });
 
+test("deriveEditorDraftFromMarkdown can ignore frontmatter-only publishing metadata", () => {
+  const result = deriveEditorDraftFromMarkdown(
+    `---
+title: Imported Post
+summary: Imported summary
+tags:
+  - React
+  - Motion
+category: project
+slug: imported-post
+---
+
+# Visible Heading
+
+Body line 1.
+`,
+    { preferFrontmatter: false },
+  );
+
+  assert.deepEqual(result, {
+    title: "Imported Post",
+    slug: "imported-post",
+    summary: "Imported summary",
+    content: "# Visible Heading\n\nBody line 1.\n",
+    category: "archive",
+    tags: [],
+    scheduleAt: null,
+    isHidden: false,
+    cover: null,
+    assets: [],
+  });
+});
+
 test("deriveEditorDraftFromMarkdown falls back to first heading and inferred summary", () => {
   const result = deriveEditorDraftFromMarkdown(`# Gentle Motion
 
@@ -329,5 +428,102 @@ test("resolveEditorAssetKind distinguishes image and file categories", () => {
       type: "application/octet-stream",
     }),
     "file",
+  );
+});
+
+test("applyEditorTitleChange syncs slug only while auto-sync is enabled and untouched", () => {
+  const initialDraft = {
+    ...createEmptyEditorDraft(),
+    slug: "",
+  };
+
+  assert.deepEqual(
+    applyEditorTitleChange({
+      draft: initialDraft,
+      nextTitle: "Sunset Motion Study",
+      autoSyncSlug: true,
+      isSlugTouched: false,
+    }),
+    {
+      draft: {
+        ...initialDraft,
+        title: "Sunset Motion Study",
+        slug: "sunset-motion-study",
+      },
+      isSlugTouched: false,
+    },
+  );
+
+  assert.deepEqual(
+    applyEditorTitleChange({
+      draft: {
+        ...initialDraft,
+        slug: "custom-slug",
+      },
+      nextTitle: "Sunset Motion Study",
+      autoSyncSlug: true,
+      isSlugTouched: true,
+    }),
+    {
+      draft: {
+        ...initialDraft,
+        title: "Sunset Motion Study",
+        slug: "custom-slug",
+      },
+      isSlugTouched: true,
+    },
+  );
+});
+
+test("hasMeaningfulEditorChanges compares the draft against its compose baseline", () => {
+  const baseline = {
+    ...createEmptyEditorDraft({
+      defaultCategory: "project",
+      defaultHidden: true,
+    }),
+    content: "# 新文章标题\n模板正文",
+  };
+
+  assert.equal(hasMeaningfulEditorChanges(baseline, baseline), false);
+  assert.equal(
+    hasMeaningfulEditorChanges(
+      {
+        ...baseline,
+        title: "   ",
+        summary: " ",
+      },
+      baseline,
+    ),
+    false,
+  );
+  assert.equal(
+    hasMeaningfulEditorChanges(
+      {
+        ...baseline,
+        category: "archive",
+      },
+      baseline,
+    ),
+    true,
+  );
+  assert.equal(
+    hasMeaningfulEditorChanges(
+      {
+        ...baseline,
+        isHidden: false,
+      },
+      baseline,
+    ),
+    true,
+  );
+  assert.equal(
+    hasMeaningfulEditorChanges(
+      {
+        ...baseline,
+        scheduleAt: "2026-04-12T09:30",
+      },
+      baseline,
+    ),
+    true,
   );
 });

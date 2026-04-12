@@ -1,206 +1,159 @@
 "use client";
 
-import { startTransition, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  CalendarDays,
-  Edit3,
-  Eye,
-  FileArchive,
-  FileCode2,
-  FileImage,
-  FileMusic,
-  FileText,
-  FileUp,
-  FileVideo,
-  Folder,
-  Image as ImageIcon,
-  LoaderCircle,
-  Lock,
-  Send,
-  Settings2,
-  Sparkles,
-  Tags,
-  UploadCloud,
-  X,
-} from "lucide-react";
-import { motion } from "framer-motion";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import { Reveal } from "@/components/motion/reveal";
-import { GlassPanel, Pill, SoftPanel } from "@/components/site/ui";
-import {
+  applyEditorTitleChange,
   buildAttachmentAsset,
+  buildAttachmentAssetReference,
   buildCoverAsset,
-  createEmptyEditorDraft,
+  buildCoverAssetReference,
+  createDefaultEditorPreferences,
   deriveEditorDraftFromMarkdown,
-  EDITOR_CATEGORIES,
-  formatEditorFileSize,
+  EDITOR_PREFERENCES_STORAGE_KEY,
+  hasMeaningfulEditorChanges,
   isImageEditorFile,
   normalizeSlug,
   normalizeTags,
   prepareEditorSubmitPayload,
-  resolveEditorAssetKind,
-  validateEditorDraft,
-  type EditorAssetKind,
-  type EditorAttachmentAsset,
-  type EditorCategory,
-  type EditorCoverAsset,
+  resolveEditorPreferences,
   type EditorDraft,
+  type EditorDraftListItem,
+  type EditorDraftSource,
   type EditorFieldErrors,
+  type EditorMediaReference,
+  type EditorMode,
+  type EditorPreferences,
+  type EditorSection,
 } from "@/lib/editor";
 import type { EditorWriteResult } from "@/lib/publish-shared";
-import { cn } from "@/lib/utils";
+import {
+  buildInitialDraft,
+  countLines,
+  countWords,
+  describeAsset,
+  INITIAL_TEMPLATE,
+  isSlugCustom,
+} from "./editor-helpers";
+import {
+  EditorComposePanel,
+  EditorDraftsPanel,
+  EditorMediaPanel,
+  EditorSettingsPanel,
+  EditorSidebar,
+} from "./editor-sections";
 
 type EditorStatus = "idle" | "saving" | "saved" | "error";
-type EditorMode = "edit" | "preview";
 
-type NavItem = {
-  label: string;
-  icon: typeof Edit3;
-  active?: boolean;
+type DraftListResponse = {
+  ok: true;
+  drafts: EditorDraftListItem[];
 };
 
-type AssetVisualMeta = {
-  kind: EditorAssetKind;
-  icon: typeof FileText;
-  label: string;
+type DraftDetailResponse = {
+  ok: boolean;
+  draft?: EditorDraft;
+  source?: EditorDraftSource;
+  message?: string;
 };
 
-const ADMIN_NAV_ITEMS: NavItem[] = [
-  { label: "写作", icon: Edit3, active: true },
-  { label: "草稿", icon: Folder },
-  { label: "媒体", icon: ImageIcon },
-  { label: "设置", icon: Settings2 },
-];
-
-const CATEGORY_LABELS: Record<EditorCategory, string> = {
-  archive: "归档",
-  project: "项目",
-  resource: "资源",
+type MediaResponse = {
+  ok: true;
+  items: EditorMediaReference[];
 };
 
-const ASSET_VISUALS: Record<EditorAssetKind, AssetVisualMeta> = {
-  image: { kind: "image", icon: FileImage, label: "图片" },
-  pdf: { kind: "pdf", icon: FileText, label: "PDF" },
-  code: { kind: "code", icon: FileCode2, label: "代码" },
-  audio: { kind: "audio", icon: FileMusic, label: "音频" },
-  video: { kind: "video", icon: FileVideo, label: "视频" },
-  archive: { kind: "archive", icon: FileArchive, label: "压缩包" },
-  file: { kind: "file", icon: FileText, label: "文件" },
-};
-
-const INITIAL_TEMPLATE = `# 新文章标题
-在这里开始写作。支持常见的 Markdown 语法：
-
-- 列表
-- **加粗**
-- \`行内代码\`
-
-## 一个小节
-写下这篇文章真正想表达的核心观点。
-`;
-
-function countWords(input: string) {
-  return input
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean).length;
+function createBlankDraftFromPreferences(preferences: EditorPreferences) {
+  return buildInitialDraft(preferences);
 }
 
-function countLines(input: string) {
-  return input.length === 0 ? 1 : input.split("\n").length;
-}
-
-function buildInitialDraft(): EditorDraft {
-  return {
-    ...createEmptyEditorDraft(),
-    content: INITIAL_TEMPLATE,
-  };
-}
-
-function revokeAssetUrl(asset: EditorCoverAsset | EditorAttachmentAsset | null) {
-  if (asset?.previewUrl?.startsWith("blob:")) {
-    URL.revokeObjectURL(asset.previewUrl);
+function createAssetSummaryLabel(draft: EditorDraft) {
+  if (draft.assets.length === 0) {
+    return "尚未加入资源文件。";
   }
-}
 
-function describeAsset(asset: Pick<EditorAttachmentAsset, "name" | "type">): AssetVisualMeta {
-  return ASSET_VISUALS[resolveEditorAssetKind(asset)];
-}
+  const imageCount = draft.assets.filter((asset) => describeAsset(asset).kind === "image").length;
+  const fileCount = draft.assets.length - imageCount;
 
-function buildAssetMetaLine(asset: Pick<EditorAttachmentAsset, "name" | "size" | "type">) {
-  const visual = describeAsset(asset);
-  return `${visual.label} · ${formatEditorFileSize(asset.size)}`;
+  if (imageCount > 0 && fileCount > 0) {
+    return `已加入 ${imageCount} 张图片与 ${fileCount} 个文件。`;
+  }
+
+  if (imageCount > 0) {
+    return `已加入 ${imageCount} 张图片资源。`;
+  }
+
+  return `已加入 ${fileCount} 个文件资源。`;
 }
 
 export function EditorClient() {
-  const [draft, setDraft] = useState<EditorDraft>(() => buildInitialDraft());
+  const [preferences, setPreferences] = useState<EditorPreferences>(() => createDefaultEditorPreferences());
+  const [preferencesReady, setPreferencesReady] = useState(false);
+  const [activeSection, setActiveSection] = useState<EditorSection>("compose");
+  const [draft, setDraft] = useState<EditorDraft>(() => createBlankDraftFromPreferences(createDefaultEditorPreferences()));
+  const [draftSource, setDraftSource] = useState<EditorDraftSource | null>(null);
+  const [isSlugTouched, setIsSlugTouched] = useState(false);
   const [mode, setMode] = useState<EditorMode>("edit");
   const [tagInput, setTagInput] = useState("");
   const [status, setStatus] = useState<EditorStatus>("idle");
-  const [message, setMessage] = useState("当前为预留 API 发布模式。");
+  const [message, setMessage] = useState("编辑器已准备就绪。");
   const [errors, setErrors] = useState<EditorFieldErrors>({});
-  const autosaveTimerRef = useRef<number | null>(null);
+  const [drafts, setDrafts] = useState<EditorDraftListItem[]>([]);
+  const [draftsLoading, setDraftsLoading] = useState(false);
+  const [draftActionKey, setDraftActionKey] = useState<string | null>(null);
+  const [media, setMedia] = useState<EditorMediaReference[]>([]);
+  const [mediaLoading, setMediaLoading] = useState(false);
+  const [mediaFilter, setMediaFilter] = useState<"all" | "cover" | "asset">("all");
+  const [mediaQuery, setMediaQuery] = useState("");
+  const [composeBaseline, setComposeBaseline] = useState<EditorDraft>(() =>
+    createBlankDraftFromPreferences(createDefaultEditorPreferences()),
+  );
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const coverInputRef = useRef<HTMLInputElement | null>(null);
   const assetInputRef = useRef<HTMLInputElement | null>(null);
   const objectUrlsRef = useRef<string[]>([]);
-  const preserveActionMessageRef = useRef(false);
 
   const wordCount = useMemo(() => countWords(draft.content), [draft.content]);
   const lineCount = useMemo(() => countLines(draft.content), [draft.content]);
-  const assetSummaryLabel = useMemo(() => {
-    if (draft.assets.length === 0) {
-      return "尚未加入资源文件。";
-    }
+  const assetSummaryLabel = useMemo(() => createAssetSummaryLabel(draft), [draft]);
 
-    const imageCount = draft.assets.filter((asset) => describeAsset(asset).kind === "image").length;
-    const fileCount = draft.assets.length - imageCount;
+  const filteredMedia = useMemo(() => {
+    const query = mediaQuery.trim().toLowerCase();
 
-    if (imageCount > 0 && fileCount > 0) {
-      return `已加入 ${imageCount} 张图片与 ${fileCount} 个文件。`;
-    }
-
-    if (imageCount > 0) {
-      return `已加入 ${imageCount} 张图片资源。`;
-    }
-
-    return `已加入 ${fileCount} 个文件资源。`;
-  }, [draft.assets]);
+    return media.filter((item) => {
+      const matchesFilter = mediaFilter === "all" || item.role === mediaFilter;
+      const haystack = `${item.name} ${item.sourceTitle} ${item.sourceSlug}`.toLowerCase();
+      const matchesQuery = !query || haystack.includes(query);
+      return matchesFilter && matchesQuery;
+    });
+  }, [media, mediaFilter, mediaQuery]);
 
   useEffect(() => {
-    if (autosaveTimerRef.current !== null) {
-      window.clearTimeout(autosaveTimerRef.current);
+    try {
+      const raw = window.localStorage.getItem(EDITOR_PREFERENCES_STORAGE_KEY);
+      const resolved = resolveEditorPreferences(raw ? JSON.parse(raw) : null);
+      const nextDraft = createBlankDraftFromPreferences(resolved);
+      setPreferences(resolved);
+      setDraft(nextDraft);
+      setComposeBaseline(nextDraft);
+      setMode(resolved.defaultMode);
+    } catch {
+      const defaults = createDefaultEditorPreferences();
+      const nextDraft = createBlankDraftFromPreferences(defaults);
+      setPreferences(defaults);
+      setDraft(nextDraft);
+      setComposeBaseline(nextDraft);
+      setMode(defaults.defaultMode);
+    } finally {
+      setPreferencesReady(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!preferencesReady) {
+      return;
     }
 
-    if (preserveActionMessageRef.current) {
-      autosaveTimerRef.current = window.setTimeout(() => {
-        preserveActionMessageRef.current = false;
-        setMessage("草稿状态已同步到当前会话。");
-        autosaveTimerRef.current = null;
-      }, 900);
-
-      return () => {
-        if (autosaveTimerRef.current !== null) {
-          window.clearTimeout(autosaveTimerRef.current);
-        }
-      };
-    }
-
-    setStatus((current) => (current === "saving" ? current : "idle"));
-    setMessage("编辑内容已更新，等待下一次发布。");
-
-    autosaveTimerRef.current = window.setTimeout(() => {
-      setMessage("草稿状态已同步到当前会话。");
-      autosaveTimerRef.current = null;
-    }, 700);
-
-    return () => {
-      if (autosaveTimerRef.current !== null) {
-        window.clearTimeout(autosaveTimerRef.current);
-      }
-    };
-  }, [draft]);
+    window.localStorage.setItem(EDITOR_PREFERENCES_STORAGE_KEY, JSON.stringify(preferences));
+  }, [preferences, preferencesReady]);
 
   useEffect(() => {
     return () => {
@@ -208,6 +161,16 @@ export function EditorClient() {
       objectUrlsRef.current = [];
     };
   }, []);
+
+  useEffect(() => {
+    if (activeSection === "drafts") {
+      void loadDrafts();
+    }
+
+    if (activeSection === "media") {
+      void loadMedia();
+    }
+  }, [activeSection]);
 
   function registerObjectUrl(url: string | null) {
     if (!url || !url.startsWith("blob:")) {
@@ -226,6 +189,11 @@ export function EditorClient() {
     objectUrlsRef.current = objectUrlsRef.current.filter((entry) => entry !== url);
   }
 
+  function clearBlobAssetsFromDraft(currentDraft: EditorDraft) {
+    currentDraft.assets.forEach((asset) => unregisterObjectUrl(asset.previewUrl));
+    unregisterObjectUrl(currentDraft.cover?.previewUrl ?? null);
+  }
+
   function updateDraft<K extends keyof EditorDraft>(key: K, value: EditorDraft[K]) {
     setDraft((current) => ({
       ...current,
@@ -241,10 +209,82 @@ export function EditorClient() {
       delete next[key];
       return next;
     });
+
+    setStatus("idle");
   }
 
-  function preserveNextDraftFeedback() {
-    preserveActionMessageRef.current = true;
+  function applyNextDraft(nextDraft: EditorDraft, source: EditorDraftSource | null) {
+    clearBlobAssetsFromDraft(draft);
+    setDraft(nextDraft);
+    setComposeBaseline(nextDraft);
+    setDraftSource(source);
+    setIsSlugTouched(isSlugCustom(nextDraft));
+    setErrors({});
+    setStatus("saved");
+    setMessage(source ? "草稿已载入写作区。" : "已切换到新的写作草稿。");
+  }
+
+  function createFreshDraft() {
+    const nextDraft = createBlankDraftFromPreferences(preferences);
+    applyNextDraft(nextDraft, null);
+    setMode(preferences.defaultMode);
+    setTagInput("");
+    setActiveSection("compose");
+  }
+
+  async function loadDrafts() {
+    setDraftsLoading(true);
+
+    try {
+      const response = await fetch("/editor/api/drafts", { cache: "no-store" });
+      const result = (await response.json()) as DraftListResponse;
+      setDrafts(result.drafts ?? []);
+    } catch {
+      setStatus("error");
+      setMessage("草稿列表读取失败。");
+    } finally {
+      setDraftsLoading(false);
+    }
+  }
+
+  async function loadMedia() {
+    setMediaLoading(true);
+
+    try {
+      const response = await fetch("/editor/api/media", { cache: "no-store" });
+      const result = (await response.json()) as MediaResponse;
+      setMedia(result.items ?? []);
+    } catch {
+      setStatus("error");
+      setMessage("媒体索引读取失败。");
+    } finally {
+      setMediaLoading(false);
+    }
+  }
+
+  function handleTitleChange(value: string) {
+    const result = applyEditorTitleChange({
+      draft,
+      nextTitle: value,
+      autoSyncSlug: preferences.autoSyncSlug,
+      isSlugTouched,
+    });
+
+    setDraft(result.draft);
+    setIsSlugTouched(result.isSlugTouched);
+    setErrors((current) => {
+      const next = { ...current };
+      delete next.title;
+      if (!isSlugTouched) {
+        delete next.slug;
+      }
+      return next;
+    });
+  }
+
+  function handleSlugChange(value: string) {
+    updateDraft("slug", normalizeSlug(value));
+    setIsSlugTouched(true);
   }
 
   function addTag(value: string) {
@@ -273,13 +313,20 @@ export function EditorClient() {
 
     try {
       const text = await file.text();
-      const nextDraft = deriveEditorDraftFromMarkdown(text);
+      const imported = deriveEditorDraftFromMarkdown(text, {
+        preferFrontmatter: preferences.preferFrontmatterOnImport,
+      });
 
-      preserveNextDraftFeedback();
       setDraft((current) => ({
         ...current,
-        ...nextDraft,
+        ...imported,
       }));
+      setComposeBaseline((current) => ({
+        ...current,
+        ...imported,
+      }));
+      setDraftSource(null);
+      setIsSlugTouched(isSlugCustom(imported));
       setErrors({});
       setStatus("saved");
       setMessage(`已导入 ${file.name}，草稿内容已更新。`);
@@ -302,15 +349,10 @@ export function EditorClient() {
 
     const previewUrl = URL.createObjectURL(file);
     registerObjectUrl(previewUrl);
-
     const nextCover = buildCoverAsset(file, previewUrl);
 
-    preserveNextDraftFeedback();
     setDraft((current) => {
-      if (current.cover?.previewUrl) {
-        unregisterObjectUrl(current.cover.previewUrl);
-      }
-
+      unregisterObjectUrl(current.cover?.previewUrl ?? null);
       return {
         ...current,
         cover: nextCover,
@@ -322,12 +364,8 @@ export function EditorClient() {
   }
 
   function clearCover() {
-    preserveNextDraftFeedback();
     setDraft((current) => {
-      if (current.cover?.previewUrl) {
-        unregisterObjectUrl(current.cover.previewUrl);
-      }
-
+      unregisterObjectUrl(current.cover?.previewUrl ?? null);
       return {
         ...current,
         cover: null,
@@ -348,7 +386,6 @@ export function EditorClient() {
       return buildAttachmentAsset(file, previewUrl);
     });
 
-    preserveNextDraftFeedback();
     updateDraft("assets", [...draft.assets, ...nextAssets]);
     setStatus("saved");
     setMessage(`已加入 ${nextAssets.length} 个资源文件。`);
@@ -361,23 +398,50 @@ export function EditorClient() {
       return;
     }
 
-    preserveNextDraftFeedback();
+    unregisterObjectUrl(asset.previewUrl);
     setDraft((current) => ({
       ...current,
       assets: current.assets.filter((entry) => entry.id !== assetId),
     }));
-
-    if (asset.previewUrl) {
-      unregisterObjectUrl(asset.previewUrl);
-    }
-
     setStatus("saved");
     setMessage(`已移除资源 ${asset.name}。`);
   }
 
+  function validatePayload(payload: ReturnType<typeof prepareEditorSubmitPayload> & { source: EditorDraftSource | null }) {
+    const nextErrors: EditorFieldErrors = {};
+
+    if (!payload.title.trim()) {
+      nextErrors.title = "请输入文章标题。";
+    }
+
+    if (!payload.slug.trim()) {
+      nextErrors.slug = "请输入文章 slug。";
+    }
+
+    if (!payload.summary.trim()) {
+      nextErrors.summary = "请输入文章摘要。";
+    }
+
+    if (!payload.content.trim()) {
+      nextErrors.content = "请输入正文内容。";
+    }
+
+    if (
+      payload.scheduleAt &&
+      Number.isNaN(Date.parse(payload.scheduleAt.includes("T") ? payload.scheduleAt : payload.scheduleAt.replace(" ", "T")))
+    ) {
+      nextErrors.scheduleAt = "请输入有效的发布时间。";
+    }
+
+    return nextErrors;
+  }
+
   async function handleSubmit() {
-    const payload = prepareEditorSubmitPayload(draft);
-    const fieldErrors = validateEditorDraft(payload);
+    const payload = {
+      ...prepareEditorSubmitPayload(draft),
+      source: draftSource,
+    };
+    const fieldErrors = validatePayload(payload);
 
     if (Object.keys(fieldErrors).length > 0) {
       setErrors(fieldErrors);
@@ -408,14 +472,135 @@ export function EditorClient() {
         return;
       }
 
-      preserveNextDraftFeedback();
-      setDraft(payload);
+      setDraftSource({
+        originalCategory: result.category,
+        originalSlug: result.slug,
+      });
+      setComposeBaseline(draft);
       setStatus("saved");
       setMessage(result.message);
+      void Promise.all([loadDrafts(), loadMedia()]);
     } catch {
       setStatus("error");
       setMessage("网络错误，发布请求未完成。");
     }
+  }
+
+  async function handleContinueEdit(item: EditorDraftListItem) {
+    if (hasMeaningfulEditorChanges(draft, composeBaseline)) {
+      const confirmed = window.confirm("当前写作区存在未发布内容，是否仍然载入选中的草稿？");
+      if (!confirmed) {
+        return;
+      }
+    }
+
+    setDraftActionKey(`${item.category}:${item.slug}:load`);
+
+    try {
+      const response = await fetch(`/editor/api/drafts/${item.category}/${item.slug}`, {
+        cache: "no-store",
+      });
+      const result = (await response.json()) as DraftDetailResponse;
+
+      if (!response.ok || !result.ok || !result.draft || !result.source) {
+        setStatus("error");
+        setMessage(result.message || "草稿加载失败。");
+        return;
+      }
+
+      applyNextDraft(result.draft, result.source);
+      setActiveSection("compose");
+      setMode(preferences.defaultMode);
+      setTagInput("");
+    } catch {
+      setStatus("error");
+      setMessage("草稿加载失败。");
+    } finally {
+      setDraftActionKey(null);
+    }
+  }
+
+  async function handlePublishDraft(item: EditorDraftListItem) {
+    setDraftActionKey(`${item.category}:${item.slug}:publish`);
+
+    try {
+      const response = await fetch(`/editor/api/drafts/${item.category}/${item.slug}/publish`, {
+        method: "POST",
+      });
+      const result = (await response.json()) as EditorWriteResult;
+
+      if (!response.ok || !result.ok) {
+        setStatus("error");
+        setMessage(result.message || "草稿发布失败。");
+        return;
+      }
+
+      setStatus("saved");
+      setMessage(result.message);
+      await Promise.all([loadDrafts(), loadMedia()]);
+    } catch {
+      setStatus("error");
+      setMessage("草稿发布失败。");
+    } finally {
+      setDraftActionKey(null);
+    }
+  }
+
+  function handleApplyMediaAsCover(item: EditorMediaReference) {
+    setDraft((current) => ({
+      ...current,
+      cover: buildCoverAssetReference(item.name),
+    }));
+    setActiveSection("compose");
+    setStatus("saved");
+    setMessage(`已将 ${item.name} 设为当前草稿封面。`);
+  }
+
+  function handleApplyMediaAsAsset(item: EditorMediaReference) {
+    setDraft((current) => {
+      if (current.assets.some((asset) => asset.name === item.name)) {
+        return current;
+      }
+
+      return {
+        ...current,
+        assets: [...current.assets, buildAttachmentAssetReference(item.name)],
+      };
+    });
+    setActiveSection("compose");
+    setStatus("saved");
+    setMessage(`已将 ${item.name} 加入当前草稿资源。`);
+  }
+
+  function updatePreference<K extends keyof EditorPreferences>(key: K, value: EditorPreferences[K]) {
+    setPreferences((current) => ({
+      ...current,
+      [key]: value,
+    }));
+
+    if (key === "defaultMode") {
+      setMode(value as EditorMode);
+    }
+  }
+
+  function resetPreferences() {
+    const defaults = createDefaultEditorPreferences();
+    setPreferences(defaults);
+    setMode(defaults.defaultMode);
+    setStatus("saved");
+    setMessage("编辑器偏好已恢复默认。");
+  }
+
+  if (!preferencesReady) {
+    return (
+      <div className="editor-screen">
+        <div className="editor-main">
+          <div className="editor-cover-empty">
+            <span className="editor-cover-empty-title">正在载入编辑器配置...</span>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -451,482 +636,71 @@ export function EditorClient() {
         }}
       />
 
-      <aside className="editor-sidebar glass-panel">
-        <div>
-          <div className="editor-sidebar-brand">
-            <h1 className="font-heading text-2xl font-black tracking-[-0.06em] text-foreground">
-              YYsuni Admin
-            </h1>
-            <p className="font-label text-[10px] uppercase tracking-[0.26em] text-muted-foreground">
-              Sunset Editor Mode
-            </p>
-          </div>
-
-          <nav className="editor-admin-nav" aria-label="Editor sections">
-            {ADMIN_NAV_ITEMS.map((item) => {
-              const Icon = item.icon;
-
-              return (
-                <button
-                  key={item.label}
-                  type="button"
-                  className={cn("editor-admin-link", item.active && "editor-admin-link-active")}
-                  aria-disabled={!item.active}
-                >
-                  <Icon className="h-4 w-4" />
-                  <span className="font-label text-sm">{item.label}</span>
-                </button>
-              );
-            })}
-          </nav>
-        </div>
-
-        <SoftPanel className="editor-admin-profile">
-          <div className="editor-admin-avatar">
-            <Sparkles className="h-4 w-4" />
-          </div>
-          <div>
-            <p className="text-sm font-semibold text-foreground">Editor Session</p>
-            <p className="font-label text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-              Placeholder API Mode
-            </p>
-          </div>
-        </SoftPanel>
-      </aside>
+      <EditorSidebar activeSection={activeSection} onSectionChange={setActiveSection} />
 
       <section className="editor-main">
-        <div className="editor-header-row">
-          <Reveal>
-            <div className="editor-header-copy">
-              <h2 className="font-heading text-5xl font-black tracking-[-0.08em] text-foreground">
-                新建文章 <span className="text-primary italic">/ Create Post</span>
-              </h2>
-            </div>
-          </Reveal>
+        {activeSection === "compose" ? (
+          <EditorComposePanel
+            draft={draft}
+            mode={mode}
+            errors={errors}
+            status={status}
+            message={message}
+            tagInput={tagInput}
+            wordCount={wordCount}
+            lineCount={lineCount}
+            assetSummaryLabel={assetSummaryLabel}
+            importInputRef={importInputRef}
+            coverInputRef={coverInputRef}
+            assetInputRef={assetInputRef}
+            onTitleChange={handleTitleChange}
+            onSlugChange={handleSlugChange}
+            onSummaryChange={(value) => updateDraft("summary", value)}
+            onContentChange={(value) => updateDraft("content", value)}
+            onCategoryChange={(value) => updateDraft("category", value)}
+            onScheduleChange={(value) => updateDraft("scheduleAt", value)}
+            onHiddenChange={(value) => updateDraft("isHidden", value)}
+            onTagInputChange={setTagInput}
+            onTagAdd={() => addTag(tagInput)}
+            onTagRemove={removeTag}
+            onToggleMode={() => setMode((current) => (current === "edit" ? "preview" : "edit"))}
+            onSubmit={handleSubmit}
+            onClearCover={clearCover}
+            onRemoveAsset={removeAsset}
+          />
+        ) : null}
 
-          <Reveal delay={0.04}>
-            <div className="editor-header-actions">
-              <button
-                type="button"
-                className="editor-ghost-button"
-                onClick={() => importInputRef.current?.click()}
-              >
-                <FileUp className="h-4 w-4" />
-                <span>导入 MD</span>
-              </button>
+        {activeSection === "drafts" ? (
+          <EditorDraftsPanel
+            drafts={drafts}
+            draftsLoading={draftsLoading}
+            draftActionKey={draftActionKey}
+            onCreateDraft={createFreshDraft}
+            onContinueEdit={handleContinueEdit}
+            onPublish={handlePublishDraft}
+          />
+        ) : null}
 
-              <button
-                type="button"
-                className={cn("editor-ghost-button", mode === "preview" && "editor-ghost-button-active")}
-                onClick={() => {
-                  startTransition(() => {
-                    setMode((current) => (current === "edit" ? "preview" : "edit"));
-                  });
-                }}
-              >
-                <Eye className="h-4 w-4" />
-                <span>{mode === "preview" ? "返回编辑" : "预览"}</span>
-              </button>
+        {activeSection === "media" ? (
+          <EditorMediaPanel
+            media={filteredMedia}
+            mediaFilter={mediaFilter}
+            mediaQuery={mediaQuery}
+            mediaLoading={mediaLoading}
+            onMediaFilterChange={setMediaFilter}
+            onMediaQueryChange={setMediaQuery}
+            onApplyCover={handleApplyMediaAsCover}
+            onApplyAsset={handleApplyMediaAsAsset}
+          />
+        ) : null}
 
-              <button type="button" className="editor-ghost-button" aria-disabled="true">
-                <Settings2 className="h-4 w-4" />
-                <span>API Key</span>
-              </button>
-
-              <button
-                type="button"
-                className="editor-primary-button"
-                onClick={handleSubmit}
-                disabled={status === "saving"}
-              >
-                {status === "saving" ? (
-                  <LoaderCircle className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Send className="h-4 w-4" />
-                )}
-                <span>{status === "saving" ? "发布中..." : "发布文章"}</span>
-              </button>
-            </div>
-          </Reveal>
-        </div>
-
-        <div className="editor-grid">
-          <Reveal className="editor-main-panel" delay={0.05}>
-            <GlassPanel className="editor-writer-panel">
-              <label className="editor-field">
-                <span className="sr-only">文章标题</span>
-                <input
-                  value={draft.title}
-                  onChange={(event) => updateDraft("title", event.target.value)}
-                  className="editor-title-input"
-                  placeholder="请输入文章标题..."
-                />
-              </label>
-              {errors.title ? <p className="editor-field-error">{errors.title}</p> : null}
-
-              <div className="editor-slug-row">
-                <span className="editor-inline-label">Post Slug</span>
-                <input
-                  value={draft.slug}
-                  onChange={(event) => updateDraft("slug", normalizeSlug(event.target.value))}
-                  className="editor-slug-input"
-                  placeholder="article-url-slug"
-                />
-              </div>
-              {errors.slug ? <p className="editor-field-error">{errors.slug}</p> : null}
-
-              <motion.div
-                key={mode}
-                initial={{ opacity: 0, y: 12, scale: 0.985 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
-                className="editor-body-shell"
-              >
-                {mode === "edit" ? (
-                  <textarea
-                    value={draft.content}
-                    onChange={(event) => updateDraft("content", event.target.value)}
-                    className="editor-content-input custom-scrollbar"
-                    placeholder="在这里开始创作...（支持 Markdown）"
-                  />
-                ) : (
-                  <div className="editor-preview prose-sunset custom-scrollbar">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                      {draft.content || "暂无预览内容。"}
-                    </ReactMarkdown>
-                  </div>
-                )}
-              </motion.div>
-              {errors.content ? <p className="editor-field-error">{errors.content}</p> : null}
-
-              <div className="editor-footer-row">
-                <div className="editor-meta-inline">
-                  <span>Words: {wordCount}</span>
-                  <span>Lines: {lineCount}</span>
-                  <span>Assets: {draft.assets.length}</span>
-                </div>
-
-                <div className="editor-status-inline">
-                  <span
-                    className={cn(
-                      "editor-status-dot",
-                      status === "saved" && "editor-status-dot-success",
-                      status === "error" && "editor-status-dot-error",
-                    )}
-                  />
-                  <span>{message}</span>
-                </div>
-              </div>
-            </GlassPanel>
-          </Reveal>
-
-          <div className="editor-side-panel">
-            <Reveal delay={0.08}>
-              <GlassPanel className="editor-side-card editor-side-card-cover">
-                <div className="editor-side-heading">
-                  <Pill active className="gap-2">
-                    <FileImage className="h-3 w-3" />
-                    封面图管理
-                  </Pill>
-                  {draft.cover ? (
-                    <span className="editor-cover-chip">{buildAssetMetaLine(draft.cover)}</span>
-                  ) : null}
-                </div>
-
-                <div
-                  role="button"
-                  tabIndex={0}
-                  className="editor-cover-dropzone"
-                  onClick={() => coverInputRef.current?.click()}
-                  onKeyDown={(event) => {
-                    if (event.key !== "Enter" && event.key !== " ") {
-                      return;
-                    }
-
-                    event.preventDefault();
-                    coverInputRef.current?.click();
-                  }}
-                >
-                  {draft.cover?.previewUrl ? (
-                    <div className="editor-cover-preview-shell">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={draft.cover.previewUrl}
-                        alt={draft.cover.name}
-                        className="editor-cover-preview-image"
-                      />
-                      <div className="editor-cover-overlay">
-                        <span className="editor-cover-overlay-action">
-                          <UploadCloud className="h-4 w-4" />
-                          更换封面
-                        </span>
-                        <button
-                          type="button"
-                          className="editor-cover-overlay-action editor-cover-overlay-action-danger"
-                          onClick={(event) => {
-                            event.preventDefault();
-                            event.stopPropagation();
-                            clearCover();
-                          }}
-                        >
-                          <X className="h-4 w-4" />
-                          移除封面
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="editor-cover-empty">
-                      <div className="editor-cover-empty-icon">
-                        <UploadCloud className="h-6 w-6" />
-                      </div>
-                      <div className="editor-cover-empty-copy">
-                        <span className="editor-cover-empty-title">上传文章封面</span>
-                        <span className="editor-cover-empty-subtle">
-                          仅支持本地图片，选择后立即预览
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {draft.cover ? (
-                  <div className="editor-cover-meta">
-                    <div className="editor-cover-meta-copy">
-                      <p className="editor-asset-name">{draft.cover.name}</p>
-                      <p className="editor-asset-subtle">
-                        {draft.cover.type || "未知类型"} · {formatEditorFileSize(draft.cover.size)}
-                      </p>
-                    </div>
-                    <div className="editor-cover-meta-actions">
-                      <button
-                        type="button"
-                        className="editor-text-button"
-                        onClick={() => coverInputRef.current?.click()}
-                      >
-                        更换
-                      </button>
-                      <button type="button" className="editor-text-button" onClick={clearCover}>
-                        移除
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <p className="editor-side-caption">封面会在当前草稿会话中保留，不会真实上传。</p>
-                )}
-              </GlassPanel>
-            </Reveal>
-
-            <Reveal delay={0.1}>
-              <GlassPanel className="editor-side-card">
-                <div className="editor-side-heading">
-                  <Pill active>摘要 / Abstract</Pill>
-                </div>
-                <textarea
-                  value={draft.summary}
-                  onChange={(event) => updateDraft("summary", event.target.value)}
-                  className="editor-side-textarea"
-                  placeholder="输入文章摘要..."
-                  rows={5}
-                />
-                {errors.summary ? <p className="editor-field-error">{errors.summary}</p> : null}
-              </GlassPanel>
-            </Reveal>
-
-            <Reveal delay={0.12}>
-              <GlassPanel className="editor-side-card">
-                <div className="editor-side-heading">
-                  <Pill active>栏目 / Category</Pill>
-                </div>
-                <div className="editor-category-grid">
-                  {EDITOR_CATEGORIES.map((entry) => (
-                    <button
-                      key={entry}
-                      type="button"
-                      className={cn(
-                        "editor-category-button",
-                        draft.category === entry && "editor-category-button-active",
-                      )}
-                      onClick={() => updateDraft("category", entry)}
-                    >
-                      {CATEGORY_LABELS[entry]}
-                    </button>
-                  ))}
-                </div>
-                {errors.category ? <p className="editor-field-error">{errors.category}</p> : null}
-              </GlassPanel>
-            </Reveal>
-
-            <Reveal delay={0.14}>
-              <GlassPanel className="editor-side-card">
-                <div className="editor-side-heading">
-                  <Pill active className="gap-2">
-                    <CalendarDays className="h-3 w-3" />
-                    发布时间
-                  </Pill>
-                </div>
-                <div className="editor-schedule-field">
-                  <CalendarDays className="h-4 w-4 text-muted-foreground" />
-                  <input
-                    type="datetime-local"
-                    value={draft.scheduleAt ?? ""}
-                    onChange={(event) => updateDraft("scheduleAt", event.target.value || null)}
-                    className="editor-schedule-input"
-                  />
-                </div>
-                {errors.scheduleAt ? <p className="editor-field-error">{errors.scheduleAt}</p> : null}
-                <label className="editor-toggle-row">
-                  <div className="editor-toggle-copy">
-                    <Lock className="h-4 w-4" />
-                    <span>存为私密 / Hidden</span>
-                  </div>
-                  <input
-                    type="checkbox"
-                    className="editor-hidden-checkbox"
-                    checked={draft.isHidden}
-                    onChange={(event) => updateDraft("isHidden", event.target.checked)}
-                  />
-                </label>
-              </GlassPanel>
-            </Reveal>
-
-            <Reveal delay={0.16}>
-              <GlassPanel className="editor-side-card">
-                <div className="editor-side-heading">
-                  <Pill active className="gap-2">
-                    <Tags className="h-3 w-3" />
-                    Tags
-                  </Pill>
-                </div>
-
-                <input
-                  value={tagInput}
-                  onChange={(event) => setTagInput(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key !== "Enter") {
-                      return;
-                    }
-
-                    event.preventDefault();
-                    addTag(tagInput);
-                  }}
-                  className="editor-side-input"
-                  placeholder="按回车添加标签"
-                />
-
-                <div className="editor-tag-list">
-                  {draft.tags.length > 0 ? (
-                    draft.tags.map((tag) => (
-                      <span key={tag} className="editor-tag-chip">
-                        #{tag}
-                        <button
-                          type="button"
-                          onClick={() => removeTag(tag)}
-                          aria-label={`移除标签 ${tag}`}
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </span>
-                    ))
-                  ) : (
-                    <p className="text-sm text-muted-foreground">暂未添加标签。</p>
-                  )}
-                </div>
-              </GlassPanel>
-            </Reveal>
-
-            <Reveal delay={0.18}>
-              <GlassPanel className="editor-side-card">
-                <div className="editor-side-heading">
-                  <Pill active className="gap-2">
-                    <UploadCloud className="h-3 w-3" />
-                    文章资源
-                  </Pill>
-                  <button
-                    type="button"
-                    className="editor-text-button"
-                    onClick={() => assetInputRef.current?.click()}
-                  >
-                    添加资源
-                  </button>
-                </div>
-
-                <p className="editor-side-caption">{assetSummaryLabel}</p>
-
-                <div className="editor-asset-grid">
-                  <button
-                    type="button"
-                    className="editor-asset-add"
-                    onClick={() => assetInputRef.current?.click()}
-                  >
-                    <UploadCloud className="h-5 w-5" />
-                    <span>添加资源</span>
-                    <span className="editor-asset-add-subtle">支持图片、PDF、代码和常见文件</span>
-                  </button>
-
-                  {draft.assets.map((asset) => {
-                    const visual = describeAsset(asset);
-                    const Icon = visual.icon;
-                    const isImageAsset = visual.kind === "image" && Boolean(asset.previewUrl);
-
-                    return (
-                      <div
-                        key={asset.id}
-                        className={cn(
-                          "editor-asset-card",
-                          isImageAsset ? "editor-asset-card-image" : "editor-asset-card-file",
-                        )}
-                      >
-                        {isImageAsset ? (
-                          <div className="editor-asset-image-shell">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                              src={asset.previewUrl ?? ""}
-                              alt={asset.name}
-                              className="editor-asset-image"
-                            />
-                            <div className="editor-asset-image-overlay">
-                              <span className="editor-asset-image-label">{visual.label}</span>
-                              <button
-                                type="button"
-                                className="editor-asset-remove editor-asset-remove-floating"
-                                onClick={() => removeAsset(asset.id)}
-                                aria-label={`移除资源 ${asset.name}`}
-                              >
-                                <X className="h-3.5 w-3.5" />
-                              </button>
-                            </div>
-                            <div className="editor-asset-image-meta">
-                              <p className="editor-asset-name">{asset.name}</p>
-                              <p className="editor-asset-subtle">{buildAssetMetaLine(asset)}</p>
-                            </div>
-                          </div>
-                        ) : (
-                          <>
-                            <div className="editor-asset-icon">
-                              <Icon className="h-4.5 w-4.5" />
-                            </div>
-                            <div className="editor-asset-copy">
-                              <p className="editor-asset-name">{asset.name}</p>
-                              <p className="editor-asset-subtle">{buildAssetMetaLine(asset)}</p>
-                            </div>
-                            <button
-                              type="button"
-                              className="editor-asset-remove"
-                              onClick={() => removeAsset(asset.id)}
-                              aria-label={`移除资源 ${asset.name}`}
-                            >
-                              <X className="h-3.5 w-3.5" />
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </GlassPanel>
-            </Reveal>
-          </div>
-        </div>
+        {activeSection === "settings" ? (
+          <EditorSettingsPanel
+            preferences={preferences}
+            onUpdatePreference={updatePreference}
+            onResetPreferences={resetPreferences}
+          />
+        ) : null}
       </section>
     </div>
   );

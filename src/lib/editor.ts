@@ -2,20 +2,32 @@ import matter from "gray-matter";
 export { EDITOR_CATEGORIES } from "./editor-shared.js";
 export type {
   EditorAttachmentAsset,
+  EditorDraftListItem,
+  EditorDraftSource,
   EditorCategory,
   EditorCoverAsset,
   EditorDraft,
   EditorFieldErrors,
   EditorFileAsset,
+  EditorMediaReference,
+  EditorMode,
+  EditorPreferences,
+  EditorSection,
 } from "./editor-shared.js";
 import { EDITOR_CATEGORIES } from "./editor-shared.js";
 import type {
   EditorAttachmentAsset,
+  EditorDraftListItem,
+  EditorDraftSource,
   EditorCategory,
   EditorCoverAsset,
   EditorDraft,
   EditorFieldErrors,
   EditorFileAsset,
+  EditorMediaReference,
+  EditorMode,
+  EditorPreferences,
+  EditorSection,
 } from "./editor-shared.js";
 export type EditorAssetKind =
   | "image"
@@ -26,7 +38,9 @@ export type EditorAssetKind =
   | "archive"
   | "file";
 
-export type EditorSubmitPayload = EditorDraft;
+export type EditorSubmitPayload = EditorDraft & {
+  source?: EditorDraftSource | null;
+};
 
 export type EditorSubmitResult = {
   ok: boolean;
@@ -42,6 +56,32 @@ export type EditorSubmitResult = {
     assetCount: number;
   };
 };
+
+type DeriveEditorDraftOptions = {
+  preferFrontmatter?: boolean;
+};
+
+type ApplyEditorTitleChangeInput = {
+  draft: EditorDraft;
+  nextTitle: string;
+  autoSyncSlug: boolean;
+  isSlugTouched: boolean;
+};
+
+type ApplyEditorTitleChangeResult = {
+  draft: EditorDraft;
+  isSlugTouched: boolean;
+};
+
+const DEFAULT_EDITOR_PREFERENCES: EditorPreferences = {
+  defaultCategory: "archive",
+  defaultHidden: false,
+  autoSyncSlug: true,
+  preferFrontmatterOnImport: true,
+  defaultMode: "edit",
+};
+
+export const EDITOR_PREFERENCES_STORAGE_KEY = "myblog.editor.preferences.v1";
 
 function isEditorCategory(value: unknown): value is EditorCategory {
   return typeof value === "string" && EDITOR_CATEGORIES.includes(value as EditorCategory);
@@ -74,6 +114,10 @@ function createFileId(name: string, size: number, type: string) {
   return `${base}-${createUniqueId()}`;
 }
 
+function createDeterministicFileId(name: string, size: number, type: string) {
+  return normalizeSlug(`${name}-${size}-${type || "file"}`) || `asset-${size}`;
+}
+
 const IMAGE_EXTENSIONS = new Set([
   "png",
   "jpg",
@@ -93,18 +137,54 @@ function getFileExtension(name: string) {
   return segments.length > 1 ? segments.at(-1) ?? "" : "";
 }
 
-export function createEmptyEditorDraft(): EditorDraft {
+export function createEmptyEditorDraft(
+  partialPreferences: Partial<Pick<EditorPreferences, "defaultCategory" | "defaultHidden">> = {},
+): EditorDraft {
+  return createEmptyEditorDraftFromPreferences(partialPreferences);
+}
+
+function createEmptyEditorDraftFromPreferences(
+  partialPreferences: Partial<Pick<EditorPreferences, "defaultCategory" | "defaultHidden">> = {},
+): EditorDraft {
   return {
     title: "",
     slug: "",
     summary: "",
     content: "",
-    category: "archive",
+    category: partialPreferences.defaultCategory ?? DEFAULT_EDITOR_PREFERENCES.defaultCategory,
     tags: [],
     scheduleAt: null,
-    isHidden: false,
+    isHidden: partialPreferences.defaultHidden ?? DEFAULT_EDITOR_PREFERENCES.defaultHidden,
     cover: null,
     assets: [],
+  };
+}
+
+export function createDefaultEditorPreferences(): EditorPreferences {
+  return { ...DEFAULT_EDITOR_PREFERENCES };
+}
+
+export function resolveEditorPreferences(input: unknown): EditorPreferences {
+  const defaults = createDefaultEditorPreferences();
+
+  if (!input || typeof input !== "object") {
+    return defaults;
+  }
+
+  const value = input as Partial<Record<keyof EditorPreferences, unknown>>;
+
+  return {
+    defaultCategory: isEditorCategory(value.defaultCategory) ? value.defaultCategory : defaults.defaultCategory,
+    defaultHidden: typeof value.defaultHidden === "boolean" ? value.defaultHidden : defaults.defaultHidden,
+    autoSyncSlug: typeof value.autoSyncSlug === "boolean" ? value.autoSyncSlug : defaults.autoSyncSlug,
+    preferFrontmatterOnImport:
+      typeof value.preferFrontmatterOnImport === "boolean"
+        ? value.preferFrontmatterOnImport
+        : defaults.preferFrontmatterOnImport,
+    defaultMode:
+      value.defaultMode === "preview" || value.defaultMode === "edit"
+        ? value.defaultMode
+        : defaults.defaultMode,
   };
 }
 
@@ -214,6 +294,25 @@ export function buildCoverAsset(file: Pick<File, "name" | "type" | "size">, prev
   } satisfies EditorCoverAsset;
 }
 
+export function buildAttachmentAssetReference(name: string, previewUrl: string | null = null): EditorAttachmentAsset {
+  return {
+    id: createDeterministicFileId(name, 0, "file"),
+    name,
+    type: "",
+    size: 0,
+    previewUrl,
+  };
+}
+
+export function buildCoverAssetReference(name: string, previewUrl: string | null = null): EditorCoverAsset {
+  return {
+    name,
+    type: "",
+    size: 0,
+    previewUrl,
+  };
+}
+
 export function validateEditorDraft(draft: EditorDraft): EditorFieldErrors {
   const errors: EditorFieldErrors = {};
 
@@ -251,7 +350,7 @@ export function validateEditorDraft(draft: EditorDraft): EditorFieldErrors {
 }
 
 export function prepareEditorSubmitPayload(draft: EditorDraft): EditorSubmitPayload {
-  return {
+  const normalized: EditorSubmitPayload = {
     ...draft,
     title: draft.title.trim(),
     slug: normalizeSlug(draft.slug),
@@ -275,6 +374,8 @@ export function prepareEditorSubmitPayload(draft: EditorDraft): EditorSubmitPayl
       previewUrl: asset.previewUrl,
     })),
   };
+
+  return normalized;
 }
 
 function extractSummaryFromMarkdown(content: string) {
@@ -290,28 +391,29 @@ function extractSummaryFromMarkdown(content: string) {
   return lines[0] ?? "";
 }
 
-export function deriveEditorDraftFromMarkdown(source: string): EditorDraft {
+export function deriveEditorDraftFromMarkdown(source: string, options: DeriveEditorDraftOptions = {}): EditorDraft {
   const parsed = matter(source);
   const data = parsed.data as Record<string, unknown>;
   const content = parsed.content.replace(/^\n+/, "");
   const firstHeadingMatch = content.match(/^#\s+(.+)$/m);
+  const preferFrontmatter = options.preferFrontmatter ?? true;
   const frontmatterTitle = typeof data.title === "string" ? data.title.trim() : "";
   const inferredTitle = frontmatterTitle || firstHeadingMatch?.[1]?.trim() || "";
   const summary =
     typeof data.summary === "string" && data.summary.trim()
       ? data.summary.trim()
       : extractSummaryFromMarkdown(content);
-  const tags = Array.isArray(data.tags)
+  const tags = preferFrontmatter && Array.isArray(data.tags)
     ? normalizeTags(data.tags.filter((tag): tag is string => typeof tag === "string"))
     : [];
-  const category = isEditorCategory(data.category) ? data.category : "archive";
+  const category = preferFrontmatter && isEditorCategory(data.category) ? data.category : "archive";
   const slug =
-    typeof data.slug === "string" && data.slug.trim()
+    preferFrontmatter && typeof data.slug === "string" && data.slug.trim()
       ? normalizeSlug(data.slug)
       : normalizeSlug(inferredTitle);
 
   return {
-    ...createEmptyEditorDraft(),
+    ...createEmptyEditorDraftFromPreferences(),
     title: inferredTitle,
     slug,
     summary,
@@ -319,6 +421,52 @@ export function deriveEditorDraftFromMarkdown(source: string): EditorDraft {
     category,
     tags,
   };
+}
+
+export function applyEditorTitleChange({
+  draft,
+  nextTitle,
+  autoSyncSlug,
+  isSlugTouched,
+}: ApplyEditorTitleChangeInput): ApplyEditorTitleChangeResult {
+  if (!autoSyncSlug || isSlugTouched) {
+    return {
+      draft: {
+        ...draft,
+        title: nextTitle,
+      },
+      isSlugTouched,
+    };
+  }
+
+  return {
+    draft: {
+      ...draft,
+      title: nextTitle,
+      slug: normalizeSlug(nextTitle),
+    },
+    isSlugTouched,
+  };
+}
+
+function normalizeComparableScheduleAt(value: string | null | undefined) {
+  return value?.trim() ?? "";
+}
+
+export function hasMeaningfulEditorChanges(draft: EditorDraft, baseline: EditorDraft) {
+  return (
+    draft.title.trim() !== baseline.title.trim() ||
+    draft.slug.trim() !== baseline.slug.trim() ||
+    draft.summary.trim() !== baseline.summary.trim() ||
+    draft.content.trim() !== baseline.content.trim() ||
+    draft.category !== baseline.category ||
+    draft.isHidden !== baseline.isHidden ||
+    normalizeComparableScheduleAt(draft.scheduleAt) !== normalizeComparableScheduleAt(baseline.scheduleAt) ||
+    normalizeTags(draft.tags).join("|") !== normalizeTags(baseline.tags).join("|") ||
+    (draft.cover?.name ?? "") !== (baseline.cover?.name ?? "") ||
+    draft.assets.length !== baseline.assets.length ||
+    draft.assets.some((asset, index) => asset.name !== baseline.assets[index]?.name)
+  );
 }
 
 export function createEditorSubmitResult(
