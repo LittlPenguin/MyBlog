@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   applyEditorTitleChange,
+  countEditorDraftStatuses,
+  countEditorMediaReferences,
   createEditorSubmitResult,
   createDefaultEditorPreferences,
   createEmptyEditorDraft,
@@ -14,6 +16,7 @@ import {
   prepareEditorSubmitPayload,
   resolveEditorPreferences,
   resolveEditorAssetKind,
+  summarizeEditorPreferences,
   validateEditorDraft,
 } from "./editor.ts";
 
@@ -525,5 +528,111 @@ test("hasMeaningfulEditorChanges compares the draft against its compose baseline
       baseline,
     ),
     true,
+  );
+});
+
+test("countEditorDraftStatuses summarizes draft visibility buckets", () => {
+  const result = countEditorDraftStatuses([
+    {
+      title: "One",
+      slug: "one",
+      summary: "summary",
+      category: "archive",
+      tags: [],
+      date: "2026-04-10",
+      updatedAt: "2026-04-10T09:00:00.000Z",
+      statusLabel: "draft",
+    },
+    {
+      title: "Two",
+      slug: "two",
+      summary: "summary",
+      category: "project",
+      tags: [],
+      date: "2026-04-11",
+      updatedAt: "2026-04-11T09:00:00.000Z",
+      statusLabel: "hidden",
+    },
+    {
+      title: "Three",
+      slug: "three",
+      summary: "summary",
+      category: "resource",
+      tags: [],
+      date: "2026-04-12",
+      updatedAt: "2026-04-12T09:00:00.000Z",
+      statusLabel: "draft-hidden",
+    },
+  ]);
+
+  assert.deepEqual(result, {
+    total: 3,
+    draftOnly: 1,
+    hiddenOnly: 1,
+    mixed: 1,
+  });
+});
+
+test("countEditorMediaReferences summarizes media roles and draft-backed items", () => {
+  const result = countEditorMediaReferences([
+    {
+      id: "cover-1",
+      name: "cover-one.webp",
+      role: "cover",
+      kind: "image",
+      category: "archive",
+      sourceSlug: "entry-one",
+      sourceTitle: "Entry One",
+      sourceDate: "2026-04-10",
+      isDraft: false,
+    },
+    {
+      id: "asset-1",
+      name: "notes.pdf",
+      role: "asset",
+      kind: "pdf",
+      category: "project",
+      sourceSlug: "entry-two",
+      sourceTitle: "Entry Two",
+      sourceDate: "2026-04-11",
+      isDraft: true,
+    },
+    {
+      id: "asset-2",
+      name: "diagram.fig",
+      role: "asset",
+      kind: "file",
+      category: "resource",
+      sourceSlug: "entry-three",
+      sourceTitle: "Entry Three",
+      sourceDate: "2026-04-12",
+      isDraft: true,
+    },
+  ]);
+
+  assert.deepEqual(result, {
+    total: 3,
+    covers: 1,
+    assets: 2,
+    draftBacked: 2,
+  });
+});
+
+test("summarizeEditorPreferences exposes stable editor preference labels", () => {
+  assert.deepEqual(
+    summarizeEditorPreferences({
+      defaultCategory: "project",
+      defaultHidden: true,
+      autoSyncSlug: false,
+      preferFrontmatterOnImport: false,
+      defaultMode: "preview",
+    }),
+    {
+      defaultCategoryLabel: "项目",
+      visibilityLabel: "Private",
+      slugModeLabel: "Manual",
+      importModeLabel: "Content First",
+      defaultModeLabel: "预览",
+    },
   );
 });

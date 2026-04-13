@@ -1285,6 +1285,52 @@ img {
   gap: 0.75rem;
 }
 
+.editor-summary-grid {
+  display: grid;
+  gap: 0.9rem;
+  margin-bottom: 1rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.editor-summary-card {
+  display: grid;
+  gap: 0.35rem;
+  min-height: 8.8rem;
+  padding: 1rem 1.1rem;
+  align-content: end;
+  border-radius: 1.5rem;
+}
+
+.editor-summary-card-accent {
+  background:
+    radial-gradient(circle at top left, rgba(255, 217, 125, 0.22), transparent 46%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(255, 255, 255, 0.7));
+}
+
+.editor-summary-kicker {
+  font-family: var(--font-label), sans-serif;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--muted-foreground);
+}
+
+.editor-summary-value {
+  color: var(--foreground);
+  font-family: var(--font-heading), sans-serif;
+  font-size: clamp(1.8rem, 2.4vw, 2.4rem);
+  font-weight: 800;
+  letter-spacing: -0.06em;
+  line-height: 1;
+}
+
+.editor-summary-detail {
+  color: var(--muted-foreground);
+  font-size: 0.8rem;
+  line-height: 1.6;
+}
+
 .editor-ghost-button,
 .editor-primary-button {
   display: inline-flex;
@@ -1504,6 +1550,115 @@ img {
 
 .editor-side-card {
   padding: 1.25rem;
+}
+
+.editor-draft-card,
+.editor-media-card,
+.editor-settings-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  height: 100%;
+}
+
+.editor-card-topline {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
+.editor-badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.editor-card-date {
+  flex-shrink: 0;
+  padding-top: 0.2rem;
+  font-family: var(--font-label), sans-serif;
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--muted-foreground);
+}
+
+.editor-card-copy {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.editor-card-title {
+  color: var(--foreground);
+  font-family: var(--font-heading), sans-serif;
+  font-size: 1.85rem;
+  font-weight: 800;
+  letter-spacing: -0.05em;
+  line-height: 1.05;
+}
+
+.editor-card-description {
+  color: var(--muted-foreground);
+  font-size: 0.94rem;
+  line-height: 1.75;
+}
+
+.editor-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.editor-card-meta-item {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  padding: 0.45rem 0.75rem;
+  color: var(--muted-foreground);
+  font-family: var(--font-label), sans-serif;
+  font-size: 0.64rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.editor-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.editor-card-empty-note {
+  color: var(--muted-foreground);
+  font-size: 0.82rem;
+}
+
+.editor-card-actions {
+  margin-top: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.85rem;
+  padding-top: 0.25rem;
+}
+
+.editor-card-button-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.editor-card-hint {
+  color: var(--muted-foreground);
+  font-size: 0.78rem;
+  line-height: 1.65;
+}
+
+.editor-settings-copy {
+  margin-top: -0.1rem;
 }
 
 .editor-side-card-cover {
@@ -2152,6 +2307,10 @@ img {
     grid-template-columns: 1fr;
   }
 
+  .editor-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .editor-asset-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -2240,6 +2399,10 @@ img {
     width: 100%;
   }
 
+  .editor-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
   .editor-ghost-button,
   .editor-primary-button {
     flex: 1 1 calc(50% - 0.75rem);
@@ -2251,9 +2414,21 @@ img {
   }
 
   .editor-cover-meta,
-  .editor-cover-overlay {
+  .editor-cover-overlay,
+  .editor-card-actions,
+  .editor-card-topline {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .editor-card-button-row {
+    width: 100%;
+  }
+
+  .editor-card-button-row .editor-text-button,
+  .editor-card-button-row .editor-primary-button {
+    flex: 1 1 auto;
+    justify-content: center;
   }
 
   .editor-cover-chip {

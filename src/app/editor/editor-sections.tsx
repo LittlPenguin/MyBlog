@@ -80,6 +80,12 @@ type ComposePanelProps = {
 
 type DraftsPanelProps = {
   drafts: EditorDraftListItem[];
+  draftSummary: {
+    total: number;
+    draftOnly: number;
+    hiddenOnly: number;
+    mixed: number;
+  };
   draftsLoading: boolean;
   draftActionKey: string | null;
   onCreateDraft: () => void;
@@ -89,6 +95,13 @@ type DraftsPanelProps = {
 
 type MediaPanelProps = {
   media: EditorMediaReference[];
+  mediaSummary: {
+    total: number;
+    covers: number;
+    assets: number;
+    draftBacked: number;
+  };
+  visibleCount: number;
   mediaFilter: "all" | "cover" | "asset";
   mediaQuery: string;
   mediaLoading: boolean;
@@ -100,6 +113,13 @@ type MediaPanelProps = {
 
 type SettingsPanelProps = {
   preferences: EditorPreferences;
+  summary: {
+    defaultCategoryLabel: string;
+    visibilityLabel: string;
+    slugModeLabel: string;
+    importModeLabel: string;
+    defaultModeLabel: string;
+  };
   onUpdatePreference: <K extends keyof EditorPreferences>(key: K, value: EditorPreferences[K]) => void;
   onResetPreferences: () => void;
 };
@@ -115,6 +135,36 @@ const MEDIA_FILTER_LABELS = {
   cover: "封面",
   asset: "资源",
 } as const;
+
+function formatPanelTime(value: string) {
+  return new Date(value).toLocaleString("zh-CN", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function SectionSummaryCard({
+  eyebrow,
+  value,
+  detail,
+  accent = false,
+}: {
+  eyebrow: string;
+  value: string;
+  detail: string;
+  accent?: boolean;
+}) {
+  return (
+    <GlassPanel className={cn("editor-summary-card", accent && "editor-summary-card-accent")}>
+      <span className="editor-summary-kicker">{eyebrow}</span>
+      <strong className="editor-summary-value">{value}</strong>
+      <span className="editor-summary-detail">{detail}</span>
+    </GlassPanel>
+  );
+}
 
 function MediaKindChip({ kind }: { kind: EditorAssetKind }) {
   const visual = ASSET_VISUALS[kind];
@@ -624,6 +674,7 @@ export function EditorComposePanel({
 
 export function EditorDraftsPanel({
   drafts,
+  draftSummary,
   draftsLoading,
   draftActionKey,
   onCreateDraft,
@@ -653,6 +704,38 @@ export function EditorDraftsPanel({
         </Reveal>
       </div>
 
+      <div className="editor-summary-grid">
+        <Reveal delay={0.02}>
+          <SectionSummaryCard
+            eyebrow="Total Drafts"
+            value={String(draftSummary.total)}
+            detail="当前可继续编辑或直接发布的本地草稿"
+            accent
+          />
+        </Reveal>
+        <Reveal delay={0.04}>
+          <SectionSummaryCard
+            eyebrow="Draft Only"
+            value={String(draftSummary.draftOnly)}
+            detail="仅草稿状态，适合继续打磨后发布"
+          />
+        </Reveal>
+        <Reveal delay={0.06}>
+          <SectionSummaryCard
+            eyebrow="Hidden Only"
+            value={String(draftSummary.hiddenOnly)}
+            detail="已完成但暂不公开的隐藏内容"
+          />
+        </Reveal>
+        <Reveal delay={0.08}>
+          <SectionSummaryCard
+            eyebrow="Mixed State"
+            value={String(draftSummary.mixed)}
+            detail="同时带有草稿与私密属性的内容"
+          />
+        </Reveal>
+      </div>
+
       {draftsLoading ? (
         <GlassPanel className="editor-side-card">
           <div className="editor-cover-empty">
@@ -666,31 +749,40 @@ export function EditorDraftsPanel({
         <div className="editorial-grid lg:grid-cols-2">
           {drafts.map((item, index) => (
             <Reveal key={`${item.category}-${item.slug}`} delay={0.04 * Math.min(index, 5)}>
-              <GlassPanel className="editor-side-card flex h-full flex-col gap-4">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Pill active>{CATEGORY_LABELS[item.category]}</Pill>
-                  <Pill>{DRAFT_STATUS_LABELS[item.statusLabel]}</Pill>
-                  <span className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">{item.date}</span>
+              <GlassPanel className="editor-side-card editor-draft-card">
+                <div className="editor-card-topline">
+                  <div className="editor-badge-row">
+                    <Pill active>{CATEGORY_LABELS[item.category]}</Pill>
+                    <Pill>{DRAFT_STATUS_LABELS[item.statusLabel]}</Pill>
+                  </div>
+                  <span className="editor-card-date">{item.date}</span>
                 </div>
 
-                <div>
-                  <h3 className="font-heading text-2xl font-black tracking-[-0.05em] text-foreground">{item.title}</h3>
-                  <p className="mt-3 text-sm leading-7 text-muted-foreground">{item.summary}</p>
+                <div className="editor-card-copy">
+                  <h3 className="editor-card-title">{item.title}</h3>
+                  <p className="editor-card-description">{item.summary}</p>
                 </div>
 
-                <div className="editor-tag-list">
-                  {item.tags.map((tag) => (
-                    <span key={tag} className="editor-tag-chip">
-                      #{tag}
-                    </span>
-                  ))}
+                <div className="editor-card-meta">
+                  <span className="editor-card-meta-item">Slug / {item.slug}</span>
+                  <span className="editor-card-meta-item">最近更新 / {formatPanelTime(item.updatedAt)}</span>
                 </div>
 
-                <div className="mt-auto flex items-center justify-between gap-3">
-                  <span className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-                    更新于 {new Date(item.updatedAt).toLocaleString("zh-CN")}
-                  </span>
-                  <div className="flex items-center gap-3">
+                <div className="editor-card-tags">
+                  {item.tags.length > 0 ? (
+                    item.tags.map((tag) => (
+                      <span key={tag} className="editor-tag-chip">
+                        #{tag}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="editor-card-empty-note">还没有设置标签</span>
+                  )}
+                </div>
+
+                <div className="editor-card-actions">
+                  <div className="editor-card-hint">可继续编辑，也可跳过写作区直接公开。</div>
+                  <div className="editor-card-button-row">
                     <button type="button" className="editor-text-button" onClick={() => onContinueEdit(item)}>
                       继续编辑
                     </button>
@@ -720,6 +812,8 @@ export function EditorDraftsPanel({
 
 export function EditorMediaPanel({
   media,
+  mediaSummary,
+  visibleCount,
   mediaFilter,
   mediaQuery,
   mediaLoading,
@@ -764,6 +858,38 @@ export function EditorMediaPanel({
         </Reveal>
       </div>
 
+      <div className="editor-summary-grid">
+        <Reveal delay={0.02}>
+          <SectionSummaryCard
+            eyebrow="Media Total"
+            value={String(mediaSummary.total)}
+            detail="内容源中已登记的全部封面与资源引用"
+            accent
+          />
+        </Reveal>
+        <Reveal delay={0.04}>
+          <SectionSummaryCard
+            eyebrow="Cover Refs"
+            value={String(mediaSummary.covers)}
+            detail="适合直接回填为当前文章封面"
+          />
+        </Reveal>
+        <Reveal delay={0.06}>
+          <SectionSummaryCard
+            eyebrow="Asset Refs"
+            value={String(mediaSummary.assets)}
+            detail="可作为资源卡片加入当前草稿"
+          />
+        </Reveal>
+        <Reveal delay={0.08}>
+          <SectionSummaryCard
+            eyebrow="Visible Now"
+            value={String(visibleCount)}
+            detail={`${mediaSummary.draftBacked} 项来自草稿内容，当前筛选已生效`}
+          />
+        </Reveal>
+      </div>
+
       {mediaLoading ? (
         <GlassPanel className="editor-side-card">
           <div className="editor-cover-empty">
@@ -777,26 +903,30 @@ export function EditorMediaPanel({
         <div className="editorial-grid lg:grid-cols-2">
           {media.map((item, index) => (
             <Reveal key={item.id} delay={0.03 * Math.min(index, 7)}>
-              <GlassPanel className="editor-side-card flex h-full flex-col gap-4">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Pill active>{item.role === "cover" ? "封面" : "资源"}</Pill>
-                  <Pill>{CATEGORY_LABELS[item.category]}</Pill>
-                  <MediaKindChip kind={item.kind} />
-                  {item.isDraft ? <Pill>草稿源</Pill> : null}
+              <GlassPanel className="editor-side-card editor-media-card">
+                <div className="editor-card-topline">
+                  <div className="editor-badge-row">
+                    <Pill active>{item.role === "cover" ? "封面" : "资源"}</Pill>
+                    <Pill>{CATEGORY_LABELS[item.category]}</Pill>
+                    <MediaKindChip kind={item.kind} />
+                    {item.isDraft ? <Pill>草稿源</Pill> : null}
+                  </div>
+                  <span className="editor-card-date">{item.sourceDate}</span>
                 </div>
 
-                <div>
-                  <h3 className="font-heading text-2xl font-black tracking-[-0.05em] text-foreground">{item.name}</h3>
-                  <p className="mt-3 text-sm leading-7 text-muted-foreground">
-                    来源于《{item.sourceTitle}》 · {item.sourceDate}
-                  </p>
+                <div className="editor-card-copy">
+                  <h3 className="editor-card-title">{item.name}</h3>
+                  <p className="editor-card-description">来源于《{item.sourceTitle}》，可直接回填到当前写作草稿。</p>
                 </div>
 
-                <div className="mt-auto flex flex-wrap items-center justify-between gap-3">
-                  <span className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-                    /{item.category}/{item.sourceSlug}
-                  </span>
-                  <div className="flex items-center gap-3">
+                <div className="editor-card-meta">
+                  <span className="editor-card-meta-item">来源路径 / {`/${item.category}/${item.sourceSlug}`}</span>
+                  <span className="editor-card-meta-item">角色 / {item.role === "cover" ? "Cover" : "Asset"}</span>
+                </div>
+
+                <div className="editor-card-actions">
+                  <div className="editor-card-hint">不读取真实图片文件，只写入当前草稿的引用元数据。</div>
+                  <div className="editor-card-button-row">
                     <button type="button" className="editor-text-button" onClick={() => onApplyCover(item)}>
                       设为封面
                     </button>
@@ -817,6 +947,7 @@ export function EditorMediaPanel({
 
 export function EditorSettingsPanel({
   preferences,
+  summary,
   onUpdatePreference,
   onResetPreferences,
 }: SettingsPanelProps) {
@@ -844,11 +975,48 @@ export function EditorSettingsPanel({
         </Reveal>
       </div>
 
+      <div className="editor-summary-grid">
+        <Reveal delay={0.02}>
+          <SectionSummaryCard
+            eyebrow="Default Column"
+            value={summary.defaultCategoryLabel}
+            detail="新建草稿时默认写入的栏目归属"
+            accent
+          />
+        </Reveal>
+        <Reveal delay={0.04}>
+          <SectionSummaryCard
+            eyebrow="Visibility"
+            value={summary.visibilityLabel}
+            detail="决定新草稿是否默认以私密状态开始"
+          />
+        </Reveal>
+        <Reveal delay={0.06}>
+          <SectionSummaryCard
+            eyebrow="Slug Sync"
+            value={summary.slugModeLabel}
+            detail="标题变化时是否持续跟随生成 slug"
+          />
+        </Reveal>
+        <Reveal delay={0.08}>
+          <SectionSummaryCard
+            eyebrow="Import Strategy"
+            value={summary.importModeLabel}
+            detail={`编辑器默认进入 ${summary.defaultModeLabel} 模式`}
+          />
+        </Reveal>
+      </div>
+
       <div className="editorial-grid lg:grid-cols-2">
         <Reveal>
-          <GlassPanel className="editor-side-card">
+          <GlassPanel className="editor-side-card editor-settings-card">
             <div className="editor-side-heading">
               <Pill active>默认发布</Pill>
+            </div>
+            <div className="editor-settings-copy">
+              <p className="editor-card-description">
+                这组偏好会影响每次点击“新建空白稿”后的初始栏目和可见性，适合先固定你最常用的发布习惯。
+              </p>
             </div>
             <div className="space-y-4">
               <div>
@@ -887,9 +1055,14 @@ export function EditorSettingsPanel({
         </Reveal>
 
         <Reveal delay={0.05}>
-          <GlassPanel className="editor-side-card">
+          <GlassPanel className="editor-side-card editor-settings-card">
             <div className="editor-side-heading">
               <Pill active>写作偏好</Pill>
+            </div>
+            <div className="editor-settings-copy">
+              <p className="editor-card-description">
+                这里控制导入、slug 同步和默认视图模式，只在当前浏览器生效，不会改动仓库配置。
+              </p>
             </div>
             <div className="space-y-4">
               <label className="editor-toggle-row">

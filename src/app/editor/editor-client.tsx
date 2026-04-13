@@ -7,6 +7,8 @@ import {
   buildAttachmentAssetReference,
   buildCoverAsset,
   buildCoverAssetReference,
+  countEditorDraftStatuses,
+  countEditorMediaReferences,
   createDefaultEditorPreferences,
   deriveEditorDraftFromMarkdown,
   EDITOR_PREFERENCES_STORAGE_KEY,
@@ -16,6 +18,7 @@ import {
   normalizeTags,
   prepareEditorSubmitPayload,
   resolveEditorPreferences,
+  summarizeEditorPreferences,
   type EditorDraft,
   type EditorDraftListItem,
   type EditorDraftSource,
@@ -114,6 +117,9 @@ export function EditorClient() {
   const wordCount = useMemo(() => countWords(draft.content), [draft.content]);
   const lineCount = useMemo(() => countLines(draft.content), [draft.content]);
   const assetSummaryLabel = useMemo(() => createAssetSummaryLabel(draft), [draft]);
+  const draftSummary = useMemo(() => countEditorDraftStatuses(drafts), [drafts]);
+  const mediaSummary = useMemo(() => countEditorMediaReferences(media), [media]);
+  const preferenceSummary = useMemo(() => summarizeEditorPreferences(preferences), [preferences]);
 
   const filteredMedia = useMemo(() => {
     const query = mediaQuery.trim().toLowerCase();
@@ -673,6 +679,7 @@ export function EditorClient() {
         {activeSection === "drafts" ? (
           <EditorDraftsPanel
             drafts={drafts}
+            draftSummary={draftSummary}
             draftsLoading={draftsLoading}
             draftActionKey={draftActionKey}
             onCreateDraft={createFreshDraft}
@@ -684,6 +691,8 @@ export function EditorClient() {
         {activeSection === "media" ? (
           <EditorMediaPanel
             media={filteredMedia}
+            mediaSummary={mediaSummary}
+            visibleCount={filteredMedia.length}
             mediaFilter={mediaFilter}
             mediaQuery={mediaQuery}
             mediaLoading={mediaLoading}
@@ -697,6 +706,7 @@ export function EditorClient() {
         {activeSection === "settings" ? (
           <EditorSettingsPanel
             preferences={preferences}
+            summary={preferenceSummary}
             onUpdatePreference={updatePreference}
             onResetPreferences={resetPreferences}
           />

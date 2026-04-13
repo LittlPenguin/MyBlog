@@ -469,6 +469,71 @@ export function hasMeaningfulEditorChanges(draft: EditorDraft, baseline: EditorD
   );
 }
 
+export function countEditorDraftStatuses(items: EditorDraftListItem[]) {
+  return items.reduce(
+    (summary, item) => {
+      summary.total += 1;
+
+      if (item.statusLabel === "draft") {
+        summary.draftOnly += 1;
+      } else if (item.statusLabel === "hidden") {
+        summary.hiddenOnly += 1;
+      } else {
+        summary.mixed += 1;
+      }
+
+      return summary;
+    },
+    {
+      total: 0,
+      draftOnly: 0,
+      hiddenOnly: 0,
+      mixed: 0,
+    },
+  );
+}
+
+export function countEditorMediaReferences(items: EditorMediaReference[]) {
+  return items.reduce(
+    (summary, item) => {
+      summary.total += 1;
+
+      if (item.role === "cover") {
+        summary.covers += 1;
+      } else {
+        summary.assets += 1;
+      }
+
+      if (item.isDraft) {
+        summary.draftBacked += 1;
+      }
+
+      return summary;
+    },
+    {
+      total: 0,
+      covers: 0,
+      assets: 0,
+      draftBacked: 0,
+    },
+  );
+}
+
+export function summarizeEditorPreferences(preferences: EditorPreferences) {
+  return {
+    defaultCategoryLabel:
+      preferences.defaultCategory === "archive"
+        ? "归档"
+        : preferences.defaultCategory === "project"
+          ? "项目"
+          : "资源",
+    visibilityLabel: preferences.defaultHidden ? "Private" : "Public",
+    slugModeLabel: preferences.autoSyncSlug ? "Auto" : "Manual",
+    importModeLabel: preferences.preferFrontmatterOnImport ? "Frontmatter" : "Content First",
+    defaultModeLabel: preferences.defaultMode === "edit" ? "编辑" : "预览",
+  };
+}
+
 export function createEditorSubmitResult(
   draft: EditorDraft,
   now: () => string = () => new Date().toISOString(),

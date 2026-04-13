@@ -82,35 +82,35 @@ test("writeEditorContentFile refuses to overwrite an existing slug", async () =>
 });
 
 test("published project metadata is discoverable through the public project reader", async () => {
-  const project = await getProjectBySlug("project-publish-final");
+  const project = await getProjectBySlug("nebula-core");
 
   assert.ok(project);
-  assert.equal(project?.slug, "project-publish-final");
-  assert.equal(project?.title, "Project Publish Final");
+  assert.equal(project?.slug, "nebula-core");
+  assert.equal(project?.title, "Nebula Core");
   assert.equal(project?.draft, false);
-  assert.deepEqual(project?.stack, ["final", "project"]);
+  assert.deepEqual(project?.stack, ["Next.js", "TypeScript", "Charts"]);
 });
 
 test("published resource metadata is discoverable through the public resource reader", async () => {
-  const resource = await getResourceBySlug("resource-publish-final");
+  const resource = await getResourceBySlug("framer-motion");
 
   assert.ok(resource);
-  assert.equal(resource?.slug, "resource-publish-final");
-  assert.equal(resource?.title, "Resource Publish Final");
+  assert.equal(resource?.slug, "framer-motion");
+  assert.equal(resource?.title, "Framer Motion");
   assert.equal(resource?.draft, false);
-  assert.equal(resource?.url, "/resources/resource-publish-final");
+  assert.equal(resource?.url, "https://www.framer.com/motion/");
 });
 
 test("published project detail exposes body content for the public detail page", async () => {
-  const project = await getProjectDetailBySlug("project-publish-final");
+  const project = await getProjectDetailBySlug("nebula-core");
 
   assert.ok(project);
-  assert.match(project?.rawContent ?? "", /Project final body\./);
+  assert.match(project?.rawContent ?? "", /Nebula Core 是一个偏内容运营视角的数据面板实验/i);
 });
 
 test("published resource detail exposes body content for the public detail page", async () => {
-  const resource = await getResourceDetailBySlug("resource-publish-final");
+  const resource = await getResourceDetailBySlug("framer-motion");
 
   assert.ok(resource);
-  assert.match(resource?.rawContent ?? "", /Resource final body\./);
+  assert.match(resource?.rawContent ?? "", /Framer Motion 仍然是这个站点里最适合做页面层级过渡和组件入场的动画工具/i);
 });
