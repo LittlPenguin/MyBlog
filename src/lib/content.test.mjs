@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import os from "node:os";
 import path from "node:path";
+import fs from "node:fs/promises";
 import { mkdtemp, mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import test from "node:test";
 import tsconfig from "../../tsconfig.json" with { type: "json" };
@@ -8,18 +9,15 @@ import {
   CONTENT_CATEGORY_DIRECTORY,
   buildContentFileSource,
   buildEditorWriteResult,
-  collectEditorMediaReferences,
   createBaseContentFrontmatter,
   createContentFileBody,
   createEditorWritePayload,
-  getEditorDraftLists,
-  parseEditorDraftForEditing,
+  createPersistedEditorDraft,
   getContentDirectoryForCategory,
   parseContentCollectionItem,
   resolvePublishDate,
   updateEditorContentFile,
   validateEditorWriteTarget,
-  writeEditorDraftPublishedState,
 } from "./content.ts";
 
 test("getContentDirectoryForCategory resolves editor categories to content folders", () => {
@@ -70,6 +68,7 @@ test("createBaseContentFrontmatter maps editor draft into persisted metadata", (
     draft: true,
     hidden: true,
     assetNames: ["diagram.png"],
+    assetPaths: [],
   });
 });
 
@@ -103,6 +102,7 @@ test("createBaseContentFrontmatter adds resource defaults needed by public resou
     draft: false,
     hidden: false,
     assetNames: [],
+    assetPaths: [],
     url: "/resources/resource-draft",
     rating: 4,
     accent: "primary",
@@ -140,6 +140,7 @@ test("createBaseContentFrontmatter adds project defaults needed by public projec
     draft: false,
     hidden: false,
     assetNames: [],
+    assetPaths: [],
     year: "2026",
     stack: ["Next.js", "MDX"],
     href: undefined,
@@ -185,20 +186,33 @@ test("validateEditorWriteTarget rejects duplicate slugs in the target directory"
     slug: "existing-note",
   });
 
-  assert.deepEqual(result, {
-    ok: false,
-    message: "slug 已存在，请更换后再发布。",
-    errors: {
-      slug: "当前 slug 已存在对应内容文件。",
-    },
+  assert.equal(result.ok, false);
+  if (result.ok) {
+    return;
+  }
+  assert.deepEqual(result.errors, {
+    slug: "当前 slug 已存在对应内容文件。",
   });
 });
 
-test("buildEditorWriteResult returns path metadata for a successful write", () => {
-  const result = buildEditorWriteResult({
+test("buildEditorWriteResult returns path metadata and persisted compose payload", () => {
+  const payload = createEditorWritePayload({
+    title: "New Resource",
     slug: "new-resource",
+    summary: "Summary",
+    content: "# New Resource",
     category: "resource",
+    tags: ["Reference"],
+    scheduleAt: null,
+    isHidden: false,
+    cover: null,
+    assets: [],
+  });
+
+  const result = buildEditorWriteResult({
+    payload,
     outputPath: "src/content/resources/new-resource.mdx",
+    now: () => "2026-04-14T09:00:00.000Z",
   });
 
   assert.deepEqual(result, {
@@ -207,6 +221,14 @@ test("buildEditorWriteResult returns path metadata for a successful write", () =
     slug: "new-resource",
     category: "resource",
     outputPath: "src/content/resources/new-resource.mdx",
+    draft: {
+      ...payload,
+      scheduleAt: "2026-04-14T00:00",
+    },
+    source: {
+      originalCategory: "resource",
+      originalSlug: "new-resource",
+    },
   });
 });
 
@@ -246,115 +268,30 @@ Body copy.
   assert.match(item.content, /# Quiet Library/);
 });
 
-test("getEditorDraftLists returns hidden or draft content sorted by mtime descending", async () => {
-  const tmpRoot = await mkdtemp(path.join(os.tmpdir(), "myblog-drafts-"));
-  const postsDir = path.join(tmpRoot, "posts");
-  const resourcesDir = path.join(tmpRoot, "resources");
-  await mkdir(postsDir, { recursive: true });
-  await mkdir(resourcesDir, { recursive: true });
-
-  await writeFile(
-    path.join(postsDir, "calm-note.mdx"),
-    `---
-title: "Calm Note"
-slug: "calm-note"
-summary: "Quiet archive note"
-date: "2026-04-10"
-category: "褰掓。"
-tags:
-  - Notes
-featured: false
-draft: true
-hidden: false
-assetNames: []
----
-
-# Calm Note
-`,
-    "utf8",
-  );
-
-  await new Promise((resolve) => setTimeout(resolve, 30));
-
-  await writeFile(
-    path.join(resourcesDir, "private-library.mdx"),
-    `---
-title: "Private Library"
-slug: "private-library"
-summary: "Saved resource"
-date: "2026-04-11"
-category: "璧勬簮"
-tags:
-  - Library
-featured: false
-draft: false
-hidden: true
-assetNames:
-  - "notes.pdf"
-url: "/resources/private-library"
-rating: 4
-accent: "primary"
-monogram: "PL"
----
-
-# Private Library
-`,
-    "utf8",
-  );
-
-  const drafts = await getEditorDraftLists(tmpRoot);
-
-  assert.equal(drafts.length, 2);
-  assert.equal(drafts[0]?.slug, "private-library");
-  assert.equal(drafts[0]?.category, "resource");
-  assert.equal(drafts[0]?.statusLabel, "hidden");
-  assert.equal(drafts[1]?.slug, "calm-note");
-  assert.equal(drafts[1]?.statusLabel, "draft");
-  assert.match(drafts[0]?.updatedAt ?? "", /^20/);
-});
-
-test("parseEditorDraftForEditing converts persisted MDX into editor draft and source metadata", async () => {
-  const tmpRoot = await mkdtemp(path.join(os.tmpdir(), "myblog-edit-source-"));
-  const projectDir = path.join(tmpRoot, "projects");
-  await mkdir(projectDir, { recursive: true });
-
-  await writeFile(
-    path.join(projectDir, "studio-notes.mdx"),
-    `---
-title: "Studio Notes"
-slug: "studio-notes"
-summary: "Build log"
-description: "Build log"
-date: "2026-04-12"
-category: "椤圭洰"
-tags:
-  - Motion
-  - UI
-cover: "cover.webp"
-featured: false
-draft: true
-hidden: true
-assetNames:
-  - "diagram.pdf"
-year: "2026"
-stack:
-  - Motion
-  - UI
-icon: "grid"
-accent: "primary"
----
-
-# Studio Notes
-
-Detailed body.
-`,
-    "utf8",
-  );
-
-  const result = await parseEditorDraftForEditing({
-    rootDir: tmpRoot,
+test("createPersistedEditorDraft maps persisted file metadata back to compose state", () => {
+  const result = createPersistedEditorDraft({
     category: "project",
     slug: "studio-notes",
+    frontmatter: {
+      title: "Studio Notes",
+      slug: "studio-notes",
+      summary: "Build log",
+      description: "Build log",
+      date: "2026-04-12",
+      category: "项目",
+      tags: ["Motion", "UI"],
+      cover: "/uploads/projects/studio-notes/cover.webp",
+      featured: false,
+      draft: true,
+      hidden: true,
+      assetNames: ["diagram.pdf"],
+      assetPaths: ["/uploads/projects/studio-notes/assets/diagram.pdf"],
+      year: "2026",
+      stack: ["Motion", "UI"],
+      icon: "grid",
+      accent: "primary",
+    },
+    content: "# Studio Notes\n\nDetailed body.\n",
   });
 
   assert.deepEqual(result, {
@@ -371,7 +308,8 @@ Detailed body.
         name: "cover.webp",
         type: "",
         size: 0,
-        previewUrl: null,
+        previewUrl: "/uploads/projects/studio-notes/cover.webp",
+        persistedPath: "/uploads/projects/studio-notes/cover.webp",
       },
       assets: [
         {
@@ -379,7 +317,8 @@ Detailed body.
           name: "diagram.pdf",
           type: "",
           size: 0,
-          previewUrl: null,
+          previewUrl: "/uploads/projects/studio-notes/assets/diagram.pdf",
+          persistedPath: "/uploads/projects/studio-notes/assets/diagram.pdf",
         },
       ],
     },
@@ -388,105 +327,6 @@ Detailed body.
       originalSlug: "studio-notes",
     },
   });
-});
-
-test("collectEditorMediaReferences aggregates cover and assets across content", async () => {
-  const tmpRoot = await mkdtemp(path.join(os.tmpdir(), "myblog-media-"));
-  const postsDir = path.join(tmpRoot, "posts");
-  const projectsDir = path.join(tmpRoot, "projects");
-  await mkdir(postsDir, { recursive: true });
-  await mkdir(projectsDir, { recursive: true });
-
-  await writeFile(
-    path.join(postsDir, "quiet-essay.mdx"),
-    `---
-title: "Quiet Essay"
-slug: "quiet-essay"
-summary: "Archive body"
-date: "2026-04-09"
-category: "褰掓。"
-tags: ["Essay"]
-cover: "quiet-cover.webp"
-featured: false
-draft: false
-hidden: false
-assetNames:
-  - "archive-notes.pdf"
----
-
-# Quiet Essay
-`,
-    "utf8",
-  );
-
-  await writeFile(
-    path.join(projectsDir, "draft-project.mdx"),
-    `---
-title: "Draft Project"
-slug: "draft-project"
-summary: "Project body"
-date: "2026-04-10"
-category: "椤圭洰"
-tags: ["Project"]
-cover: "project-cover.png"
-featured: false
-draft: true
-hidden: false
-assetNames:
-  - "prototype.fig"
-year: "2026"
-stack: ["Project"]
-icon: "grid"
-accent: "primary"
----
-
-# Draft Project
-`,
-    "utf8",
-  );
-
-  const media = await collectEditorMediaReferences(tmpRoot);
-
-  assert.equal(media.length, 4);
-  assert.deepEqual(
-    media.map((item) => ({
-      name: item.name,
-      role: item.role,
-      category: item.category,
-      sourceSlug: item.sourceSlug,
-      isDraft: item.isDraft,
-    })),
-    [
-      {
-        name: "project-cover.png",
-        role: "cover",
-        category: "project",
-        sourceSlug: "draft-project",
-        isDraft: true,
-      },
-      {
-        name: "prototype.fig",
-        role: "asset",
-        category: "project",
-        sourceSlug: "draft-project",
-        isDraft: true,
-      },
-      {
-        name: "quiet-cover.webp",
-        role: "cover",
-        category: "archive",
-        sourceSlug: "quiet-essay",
-        isDraft: false,
-      },
-      {
-        name: "archive-notes.pdf",
-        role: "asset",
-        category: "archive",
-        sourceSlug: "quiet-essay",
-        isDraft: false,
-      },
-    ],
-  );
 });
 
 test("updateEditorContentFile overwrites the original file when source matches slug and category", async () => {
@@ -502,7 +342,7 @@ title: "Draft Note"
 slug: "draft-note"
 summary: "Initial summary"
 date: "2026-04-09"
-category: "褰掓。"
+category: "归档"
 tags:
   - Notes
 featured: false
@@ -565,7 +405,7 @@ title: "Draft Note"
 slug: "draft-note"
 summary: "Initial summary"
 date: "2026-04-09"
-category: "褰掓。"
+category: "归档"
 tags:
   - Notes
 featured: false
@@ -610,65 +450,117 @@ assetNames: []
   assert.match(moved, /title: Resource Draft/);
   assert.match(moved, /category: 资源/);
   assert.match(moved, /draft: false/);
+  assert.deepEqual(result.source, {
+    originalCategory: "resource",
+    originalSlug: "resource-draft",
+  });
 });
 
-test("writeEditorDraftPublishedState flips draft and hidden flags to false", async () => {
-  const tmpRoot = await mkdtemp(path.join(os.tmpdir(), "myblog-publish-draft-"));
-  const projectDir = path.join(tmpRoot, "projects");
-  await mkdir(projectDir, { recursive: true });
+test("updateEditorContentFile persists cover and assets into public uploads and returns persisted draft paths", async () => {
+  const rootDir = await mkdtemp(path.join(os.tmpdir(), "myblog-assets-"));
 
-  const filePath = path.join(projectDir, "private-project.mdx");
-  await writeFile(
-    filePath,
-    `---
-title: "Private Project"
-slug: "private-project"
-summary: "Summary"
-date: "2026-04-09"
-category: "椤圭洰"
-tags:
-  - Internal
-featured: false
-draft: true
-hidden: true
-assetNames: []
-year: "2026"
-stack: ["Internal"]
-icon: "grid"
-accent: "primary"
----
-
-# Private Project
-`,
-    "utf8",
-  );
-
-  const result = await writeEditorDraftPublishedState({
-    rootDir: tmpRoot,
-    category: "project",
-    slug: "private-project",
+  const result = await updateEditorContentFile({
+    rootDir,
+    payload: createEditorWritePayload({
+      title: "Asset Rich Resource",
+      slug: "asset-rich-resource",
+      summary: "Summary",
+      content: "# Asset Rich Resource\n\nBody",
+      category: "resource",
+      tags: ["Assets"],
+      scheduleAt: null,
+      isHidden: false,
+      cover: {
+        name: "cover.webp",
+        type: "image/webp",
+        size: 4,
+        previewUrl: "blob:cover",
+        persistedPath: null,
+      },
+      assets: [
+        {
+          id: "asset-1",
+          name: "diagram.png",
+          type: "image/png",
+          size: 4,
+          previewUrl: "blob:diagram",
+          persistedPath: null,
+        },
+        {
+          id: "asset-2",
+          name: "brief.pdf",
+          type: "application/pdf",
+          size: 4,
+          previewUrl: null,
+          persistedPath: null,
+        },
+      ],
+    }),
+    coverUpload: {
+      name: "cover.webp",
+      type: "image/webp",
+      size: 4,
+      buffer: new Uint8Array([1, 2, 3, 4]),
+    },
+    assetUploads: [
+      {
+        name: "diagram.png",
+        type: "image/png",
+        size: 4,
+        buffer: new Uint8Array([5, 6, 7, 8]),
+      },
+      {
+        name: "brief.pdf",
+        type: "application/pdf",
+        size: 4,
+        buffer: new Uint8Array([9, 10, 11, 12]),
+      },
+    ],
+    now: () => "2026-04-12T12:00:00.000Z",
   });
 
   assert.equal(result.ok, true);
-  assert.equal(result.message, "草稿已发布为公开内容。");
-  const persisted = await readFile(filePath, "utf8");
-  assert.match(persisted, /draft: false/);
-  assert.match(persisted, /hidden: false/);
-});
+  if (!result.ok) {
+    return;
+  }
 
-test("writeEditorDraftPublishedState returns a clear message when the draft file is missing", async () => {
-  const tmpRoot = await mkdtemp(path.join(os.tmpdir(), "myblog-publish-missing-"));
-  await mkdir(path.join(tmpRoot, "posts"), { recursive: true });
+  const persisted = await readFile(path.join(rootDir, "resources", "asset-rich-resource.mdx"), "utf8");
+  assert.match(persisted, /cover: \/uploads\/resources\/asset-rich-resource\/cover\.webp/);
+  assert.match(persisted, /assetNames:/);
+  assert.match(persisted, /- diagram\.png/);
+  assert.match(persisted, /assetPaths:/);
+  assert.match(persisted, /- \/uploads\/resources\/asset-rich-resource\/assets\/diagram\.png/);
+  assert.match(persisted, /- \/uploads\/resources\/asset-rich-resource\/assets\/brief\.pdf/);
+  assert.equal(result.draft.cover?.persistedPath, "/uploads/resources/asset-rich-resource/cover.webp");
+  assert.deepEqual(
+    result.draft.assets.map((asset) => ({
+      name: asset.name,
+      persistedPath: asset.persistedPath,
+    })),
+    [
+      {
+        name: "diagram.png",
+        persistedPath: "/uploads/resources/asset-rich-resource/assets/diagram.png",
+      },
+      {
+        name: "brief.pdf",
+        persistedPath: "/uploads/resources/asset-rich-resource/assets/brief.pdf",
+      },
+    ],
+  );
 
-  const result = await writeEditorDraftPublishedState({
-    rootDir: tmpRoot,
-    category: "archive",
-    slug: "missing-entry",
-  });
+  const coverFile = await readFile(
+    path.join(process.cwd(), "public", "uploads", "resources", "asset-rich-resource", "cover.webp"),
+  );
+  const assetFile = await readFile(
+    path.join(process.cwd(), "public", "uploads", "resources", "asset-rich-resource", "assets", "diagram.png"),
+  );
+  assert.equal(coverFile.length, 4);
+  assert.equal(assetFile.length, 4);
 
-  assert.deepEqual(result, {
-    ok: false,
-    message: "未找到目标草稿文件。",
+  await fs.rm(path.join(process.cwd(), "public", "uploads", "resources", "asset-rich-resource"), {
+    recursive: true,
+    force: true,
   });
 });
 

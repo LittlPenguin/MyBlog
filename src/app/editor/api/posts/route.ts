@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   createEditorWritePayload,
+  type EditorUploadedFile,
   updateEditorContentFile,
 } from "@/lib/content";
 import {
@@ -14,16 +15,52 @@ import {
   revalidatePreviousContentRoute,
 } from "../shared";
 
+async function toUploadedFile(file: File): Promise<EditorUploadedFile> {
+  return {
+    name: file.name,
+    type: file.type,
+    size: file.size,
+    buffer: new Uint8Array(await file.arrayBuffer()),
+  };
+}
+
 export async function POST(request: Request) {
   let payload: EditorSubmitPayload;
+  let coverUpload: EditorUploadedFile | null = null;
+  let assetUploads: EditorUploadedFile[] = [];
 
   try {
-    payload = (await request.json()) as EditorSubmitPayload;
+    const formData = await request.formData();
+    const rawPayload = formData.get("payload");
+
+    if (typeof rawPayload !== "string") {
+      return NextResponse.json<EditorWriteResult>(
+        {
+          ok: false,
+          message: "请求体中缺少文章 payload。",
+        },
+        { status: 400 },
+      );
+    }
+
+    payload = JSON.parse(rawPayload) as EditorSubmitPayload;
+
+    const coverFile = formData.get("coverFile");
+    if (coverFile instanceof File) {
+      coverUpload = await toUploadedFile(coverFile);
+    }
+
+    assetUploads = await Promise.all(
+      formData
+        .getAll("assetFiles")
+        .filter((file): file is File => file instanceof File)
+        .map((file) => toUploadedFile(file)),
+    );
   } catch {
     return NextResponse.json<EditorWriteResult>(
       {
         ok: false,
-        message: "请求体不是合法的 JSON。",
+        message: "请求体不是合法的表单数据。",
       },
       { status: 400 },
     );
@@ -46,6 +83,8 @@ export async function POST(request: Request) {
   const result = await updateEditorContentFile({
     rootDir: editorContentRootDir(),
     payload: prepared,
+    coverUpload,
+    assetUploads,
   });
 
   if (result.ok) {

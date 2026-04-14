@@ -21,6 +21,7 @@ function normalizeProjectItem(
     stack: project.stack ?? (project.tags.length > 0 ? project.tags : ["Notes"]),
     icon: project.icon ?? "grid",
     accent: project.accent ?? "primary",
+    assetPaths: project.assetPaths ?? [],
   };
 }
 

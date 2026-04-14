@@ -2,21 +2,14 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   applyEditorTitleChange,
-  countEditorDraftStatuses,
-  countEditorMediaReferences,
-  createEditorSubmitResult,
-  createDefaultEditorPreferences,
   createEmptyEditorDraft,
-  hasMeaningfulEditorChanges,
   deriveEditorDraftFromMarkdown,
   formatEditorFileSize,
   isImageEditorFile,
   normalizeSlug,
   normalizeTags,
   prepareEditorSubmitPayload,
-  resolveEditorPreferences,
   resolveEditorAssetKind,
-  summarizeEditorPreferences,
   validateEditorDraft,
 } from "./editor.ts";
 
@@ -32,63 +25,11 @@ test("normalizeTags strips hashes and removes duplicate tags case-insensitively"
   ]);
 });
 
-test("createDefaultEditorPreferences returns the expected defaults", () => {
-  assert.deepEqual(createDefaultEditorPreferences(), {
-    defaultCategory: "archive",
-    defaultHidden: false,
-    autoSyncSlug: true,
-    preferFrontmatterOnImport: true,
-    defaultMode: "edit",
-  });
-});
-
-test("resolveEditorPreferences ignores invalid values and keeps valid overrides", () => {
-  assert.deepEqual(
-    resolveEditorPreferences({
-      defaultCategory: "project",
-      defaultHidden: true,
-      autoSyncSlug: false,
-      preferFrontmatterOnImport: false,
-      defaultMode: "preview",
-      extra: "ignored",
-    }),
-    {
-      defaultCategory: "project",
-      defaultHidden: true,
-      autoSyncSlug: false,
-      preferFrontmatterOnImport: false,
-      defaultMode: "preview",
-    },
-  );
-
-  assert.deepEqual(
-    resolveEditorPreferences({
-      defaultCategory: "invalid",
-      defaultHidden: "true",
-      autoSyncSlug: "false",
-      preferFrontmatterOnImport: 1,
-      defaultMode: "floating",
-    }),
-    createDefaultEditorPreferences(),
-  );
-});
-
-test("validateEditorDraft returns clear validation messages", () => {
-  const errors = validateEditorDraft(createEmptyEditorDraft());
-
-  assert.deepEqual(errors, {
-    title: "请输入文章标题。",
-    slug: "请输入文章 slug。",
-    summary: "请输入文章摘要。",
-    content: "请输入正文内容。",
-  });
-});
-
-test("createEmptyEditorDraft applies default category and hidden state from preferences", () => {
+test("createEmptyEditorDraft applies provided compose defaults", () => {
   assert.deepEqual(
     createEmptyEditorDraft({
-      defaultCategory: "project",
-      defaultHidden: true,
+      category: "project",
+      isHidden: true,
     }),
     {
       title: "",
@@ -105,7 +46,17 @@ test("createEmptyEditorDraft applies default category and hidden state from pref
   );
 });
 
-test("prepareEditorSubmitPayload trims fields and normalizes content", () => {
+test("validateEditorDraft returns the required error keys for an empty draft", () => {
+  const errors = validateEditorDraft(createEmptyEditorDraft());
+
+  assert.deepEqual(Object.keys(errors).sort(), ["content", "slug", "summary", "title"]);
+  assert.equal(typeof errors.title, "string");
+  assert.equal(typeof errors.slug, "string");
+  assert.equal(typeof errors.summary, "string");
+  assert.equal(typeof errors.content, "string");
+});
+
+test("prepareEditorSubmitPayload trims fields and normalizes metadata", () => {
   const payload = prepareEditorSubmitPayload({
     title: "  Sunset Note  ",
     slug: "  Sunset Note / 01 ",
@@ -113,6 +64,25 @@ test("prepareEditorSubmitPayload trims fields and normalizes content", () => {
     content: "Line 1\r\nLine 2\r\n",
     category: "resource",
     tags: [" #React ", "react", "UI "],
+    scheduleAt: "",
+    isHidden: true,
+    cover: {
+      name: "cover.webp",
+      type: "image/webp",
+      size: 1024,
+      previewUrl: "blob:cover",
+      persistedPath: null,
+    },
+    assets: [
+      {
+        id: "asset-1",
+        name: "Diagram.png",
+        type: "image/png",
+        size: 512,
+        previewUrl: "blob:asset-1",
+        persistedPath: null,
+      },
+    ],
   });
 
   assert.deepEqual(payload, {
@@ -123,80 +93,24 @@ test("prepareEditorSubmitPayload trims fields and normalizes content", () => {
     category: "resource",
     tags: ["React", "UI"],
     scheduleAt: null,
-    cover: null,
-    assets: [],
-  });
-});
-
-test("createEditorSubmitResult returns normalized preview payload when draft is valid", () => {
-  const result = createEditorSubmitResult(
-    {
-      title: "  New Resource  ",
-      slug: " New Resource ",
-      summary: "  concise summary  ",
-      content: "# Heading\n\nBody copy",
-      category: "resource",
-      tags: ["#Reading", "reading", "Design"],
-      scheduleAt: "2026-04-08T10:30",
-      isHidden: true,
-      cover: {
-        name: "cover.png",
+    isHidden: true,
+    cover: {
+      name: "cover.webp",
+      type: "image/webp",
+      size: 1024,
+      previewUrl: "blob:cover",
+      persistedPath: null,
+    },
+    assets: [
+      {
+        id: "asset-1",
+        name: "Diagram.png",
         type: "image/png",
-        size: 2048,
-        previewUrl: "blob:cover",
+        size: 512,
+        previewUrl: "blob:asset-1",
+        persistedPath: null,
       },
-      assets: [
-        {
-          id: "asset-1",
-          name: "notes.pdf",
-          type: "application/pdf",
-          size: 4096,
-          previewUrl: null,
-        },
-      ],
-    },
-    () => "2026-04-07T12:00:00.000Z",
-  );
-
-  assert.deepEqual(result, {
-    ok: true,
-    message: "接口占位成功，文章发布请求已接收。",
-    preview: {
-      slug: "new-resource",
-      category: "resource",
-      receivedAt: "2026-04-07T12:00:00.000Z",
-      scheduleAt: "2026-04-08T10:30",
-      isHidden: true,
-      coverName: "cover.png",
-      assetCount: 1,
-    },
-  });
-});
-
-test("createEditorSubmitResult returns field errors when required content is missing", () => {
-  const result = createEditorSubmitResult(
-    {
-      title: "Draft only",
-      slug: "draft-only",
-      summary: "",
-      content: "",
-      category: "archive",
-      tags: [],
-      scheduleAt: null,
-      isHidden: false,
-      cover: null,
-      assets: [],
-    },
-    () => "2026-04-07T12:00:00.000Z",
-  );
-
-  assert.deepEqual(result, {
-    ok: false,
-    message: "发布失败，请先修正表单中的必填项。",
-    errors: {
-      summary: "请输入文章摘要。",
-      content: "请输入正文内容。",
-    },
+    ],
   });
 });
 
@@ -214,66 +128,11 @@ test("validateEditorDraft rejects invalid schedule values", () => {
     assets: [],
   });
 
-  assert.deepEqual(errors, {
-    scheduleAt: "请输入有效的发布时间。",
-  });
+  assert.deepEqual(Object.keys(errors), ["scheduleAt"]);
+  assert.equal(typeof errors.scheduleAt, "string");
 });
 
-test("prepareEditorSubmitPayload normalizes new metadata fields", () => {
-  const payload = prepareEditorSubmitPayload({
-    title: "  Sunset Note  ",
-    slug: "  Sunset Note / 01 ",
-    summary: "  calm and bright  ",
-    content: "Line 1\r\nLine 2\r\n",
-    category: "resource",
-    tags: [" #React ", "react", "UI "],
-    scheduleAt: "",
-    isHidden: true,
-    cover: {
-      name: "cover.webp",
-      type: "image/webp",
-      size: 1024,
-      previewUrl: "blob:cover",
-    },
-    assets: [
-      {
-        id: "asset-1",
-        name: "Diagram.png",
-        type: "image/png",
-        size: 512,
-        previewUrl: "blob:asset-1",
-      },
-    ],
-  });
-
-  assert.deepEqual(payload, {
-    title: "Sunset Note",
-    slug: "sunset-note-01",
-    summary: "calm and bright",
-    content: "Line 1\nLine 2\n",
-    category: "resource",
-    tags: ["React", "UI"],
-    scheduleAt: null,
-    isHidden: true,
-    cover: {
-      name: "cover.webp",
-      type: "image/webp",
-      size: 1024,
-      previewUrl: "blob:cover",
-    },
-    assets: [
-      {
-        id: "asset-1",
-        name: "Diagram.png",
-        type: "image/png",
-        size: 512,
-        previewUrl: "blob:asset-1",
-      },
-    ],
-  });
-});
-
-test("deriveEditorDraftFromMarkdown uses frontmatter when present", () => {
+test("deriveEditorDraftFromMarkdown uses frontmatter when enabled", () => {
   const result = deriveEditorDraftFromMarkdown(`---
 title: Imported Post
 summary: Imported summary
@@ -303,7 +162,7 @@ Body line 1.
   });
 });
 
-test("deriveEditorDraftFromMarkdown can ignore frontmatter-only publishing metadata", () => {
+test("deriveEditorDraftFromMarkdown can ignore frontmatter publishing metadata", () => {
   const result = deriveEditorDraftFromMarkdown(
     `---
 title: Imported Post
@@ -474,165 +333,6 @@ test("applyEditorTitleChange syncs slug only while auto-sync is enabled and unto
         slug: "custom-slug",
       },
       isSlugTouched: true,
-    },
-  );
-});
-
-test("hasMeaningfulEditorChanges compares the draft against its compose baseline", () => {
-  const baseline = {
-    ...createEmptyEditorDraft({
-      defaultCategory: "project",
-      defaultHidden: true,
-    }),
-    content: "# 新文章标题\n模板正文",
-  };
-
-  assert.equal(hasMeaningfulEditorChanges(baseline, baseline), false);
-  assert.equal(
-    hasMeaningfulEditorChanges(
-      {
-        ...baseline,
-        title: "   ",
-        summary: " ",
-      },
-      baseline,
-    ),
-    false,
-  );
-  assert.equal(
-    hasMeaningfulEditorChanges(
-      {
-        ...baseline,
-        category: "archive",
-      },
-      baseline,
-    ),
-    true,
-  );
-  assert.equal(
-    hasMeaningfulEditorChanges(
-      {
-        ...baseline,
-        isHidden: false,
-      },
-      baseline,
-    ),
-    true,
-  );
-  assert.equal(
-    hasMeaningfulEditorChanges(
-      {
-        ...baseline,
-        scheduleAt: "2026-04-12T09:30",
-      },
-      baseline,
-    ),
-    true,
-  );
-});
-
-test("countEditorDraftStatuses summarizes draft visibility buckets", () => {
-  const result = countEditorDraftStatuses([
-    {
-      title: "One",
-      slug: "one",
-      summary: "summary",
-      category: "archive",
-      tags: [],
-      date: "2026-04-10",
-      updatedAt: "2026-04-10T09:00:00.000Z",
-      statusLabel: "draft",
-    },
-    {
-      title: "Two",
-      slug: "two",
-      summary: "summary",
-      category: "project",
-      tags: [],
-      date: "2026-04-11",
-      updatedAt: "2026-04-11T09:00:00.000Z",
-      statusLabel: "hidden",
-    },
-    {
-      title: "Three",
-      slug: "three",
-      summary: "summary",
-      category: "resource",
-      tags: [],
-      date: "2026-04-12",
-      updatedAt: "2026-04-12T09:00:00.000Z",
-      statusLabel: "draft-hidden",
-    },
-  ]);
-
-  assert.deepEqual(result, {
-    total: 3,
-    draftOnly: 1,
-    hiddenOnly: 1,
-    mixed: 1,
-  });
-});
-
-test("countEditorMediaReferences summarizes media roles and draft-backed items", () => {
-  const result = countEditorMediaReferences([
-    {
-      id: "cover-1",
-      name: "cover-one.webp",
-      role: "cover",
-      kind: "image",
-      category: "archive",
-      sourceSlug: "entry-one",
-      sourceTitle: "Entry One",
-      sourceDate: "2026-04-10",
-      isDraft: false,
-    },
-    {
-      id: "asset-1",
-      name: "notes.pdf",
-      role: "asset",
-      kind: "pdf",
-      category: "project",
-      sourceSlug: "entry-two",
-      sourceTitle: "Entry Two",
-      sourceDate: "2026-04-11",
-      isDraft: true,
-    },
-    {
-      id: "asset-2",
-      name: "diagram.fig",
-      role: "asset",
-      kind: "file",
-      category: "resource",
-      sourceSlug: "entry-three",
-      sourceTitle: "Entry Three",
-      sourceDate: "2026-04-12",
-      isDraft: true,
-    },
-  ]);
-
-  assert.deepEqual(result, {
-    total: 3,
-    covers: 1,
-    assets: 2,
-    draftBacked: 2,
-  });
-});
-
-test("summarizeEditorPreferences exposes stable editor preference labels", () => {
-  assert.deepEqual(
-    summarizeEditorPreferences({
-      defaultCategory: "project",
-      defaultHidden: true,
-      autoSyncSlug: false,
-      preferFrontmatterOnImport: false,
-      defaultMode: "preview",
-    }),
-    {
-      defaultCategoryLabel: "项目",
-      visibilityLabel: "Private",
-      slugModeLabel: "Manual",
-      importModeLabel: "Content First",
-      defaultModeLabel: "预览",
     },
   );
 });

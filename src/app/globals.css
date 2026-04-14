@@ -1188,80 +1188,17 @@ img {
 }
 
 .editor-screen {
-  display: grid;
   min-height: calc(100svh - 5rem);
-  grid-template-columns: 264px minmax(0, 1fr);
-  gap: 1.5rem;
+  width: 100%;
   padding-bottom: 1rem;
 }
 
-.editor-sidebar {
-  position: sticky;
-  top: 0.5rem;
-  display: flex;
-  height: calc(100svh - 6.5rem);
-  flex-direction: column;
-  justify-content: space-between;
-  padding: 1.75rem 1rem 1rem;
-}
-
-.editor-sidebar-brand {
-  padding: 0 0.75rem;
-}
-
-.editor-admin-nav {
-  margin-top: 2rem;
-  display: grid;
-  gap: 0.4rem;
-}
-
-.editor-admin-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.8rem;
-  border-radius: 1rem;
-  padding: 0.9rem 1rem;
-  color: rgba(46, 47, 45, 0.68);
-  transition:
-    transform 180ms ease,
-    color 180ms ease,
-    background-color 180ms ease;
-}
-
-.editor-admin-link:hover {
-  transform: translateX(2px);
-  color: var(--primary-strong);
-}
-
-.editor-admin-link-active {
-  background: rgba(242, 92, 75, 0.1);
-  color: var(--primary-strong);
-  font-weight: 700;
-}
-
-.editor-admin-profile {
-  display: flex;
-  align-items: center;
-  gap: 0.8rem;
-  padding: 1rem;
-}
-
-.editor-admin-avatar {
-  display: inline-flex;
-  height: 2.5rem;
-  width: 2.5rem;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999px;
-  background: linear-gradient(135deg, rgba(242, 92, 75, 0.84), rgba(255, 217, 125, 0.86));
-  color: white;
-  box-shadow: 0 12px 24px rgba(172, 42, 31, 0.22);
-}
-
 .editor-main {
+  width: min(100%, 1580px);
+  margin: 0 auto;
   min-width: 0;
-  overflow: hidden;
-  padding-top: 0.85rem;
+  overflow: visible;
+  padding-top: 1.15rem;
 }
 
 .editor-header-row {
@@ -1283,52 +1220,6 @@ img {
   flex-wrap: wrap;
   align-items: center;
   gap: 0.75rem;
-}
-
-.editor-summary-grid {
-  display: grid;
-  gap: 0.9rem;
-  margin-bottom: 1rem;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-.editor-summary-card {
-  display: grid;
-  gap: 0.35rem;
-  min-height: 8.8rem;
-  padding: 1rem 1.1rem;
-  align-content: end;
-  border-radius: 1.5rem;
-}
-
-.editor-summary-card-accent {
-  background:
-    radial-gradient(circle at top left, rgba(255, 217, 125, 0.22), transparent 46%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(255, 255, 255, 0.7));
-}
-
-.editor-summary-kicker {
-  font-family: var(--font-label), sans-serif;
-  font-size: 0.62rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.18em;
-  color: var(--muted-foreground);
-}
-
-.editor-summary-value {
-  color: var(--foreground);
-  font-family: var(--font-heading), sans-serif;
-  font-size: clamp(1.8rem, 2.4vw, 2.4rem);
-  font-weight: 800;
-  letter-spacing: -0.06em;
-  line-height: 1;
-}
-
-.editor-summary-detail {
-  color: var(--muted-foreground);
-  font-size: 0.8rem;
-  line-height: 1.6;
 }
 
 .editor-ghost-button,
@@ -1380,7 +1271,7 @@ img {
 .editor-grid {
   display: grid;
   gap: 1.5rem;
-  grid-template-columns: minmax(0, 1.38fr) minmax(320px, 0.62fr);
+  grid-template-columns: minmax(0, 1.72fr) minmax(340px, 0.58fr);
   min-height: calc(100svh - 11rem);
 }
 
@@ -1550,115 +1441,6 @@ img {
 
 .editor-side-card {
   padding: 1.25rem;
-}
-
-.editor-draft-card,
-.editor-media-card,
-.editor-settings-card {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  height: 100%;
-}
-
-.editor-card-topline {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.8rem;
-}
-
-.editor-badge-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.45rem;
-}
-
-.editor-card-date {
-  flex-shrink: 0;
-  padding-top: 0.2rem;
-  font-family: var(--font-label), sans-serif;
-  font-size: 0.62rem;
-  text-transform: uppercase;
-  letter-spacing: 0.16em;
-  color: var(--muted-foreground);
-}
-
-.editor-card-copy {
-  display: grid;
-  gap: 0.55rem;
-}
-
-.editor-card-title {
-  color: var(--foreground);
-  font-family: var(--font-heading), sans-serif;
-  font-size: 1.85rem;
-  font-weight: 800;
-  letter-spacing: -0.05em;
-  line-height: 1.05;
-}
-
-.editor-card-description {
-  color: var(--muted-foreground);
-  font-size: 0.94rem;
-  line-height: 1.75;
-}
-
-.editor-card-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.6rem;
-}
-
-.editor-card-meta-item {
-  display: inline-flex;
-  align-items: center;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.72);
-  padding: 0.45rem 0.75rem;
-  color: var(--muted-foreground);
-  font-family: var(--font-label), sans-serif;
-  font-size: 0.64rem;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-}
-
-.editor-card-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.55rem;
-}
-
-.editor-card-empty-note {
-  color: var(--muted-foreground);
-  font-size: 0.82rem;
-}
-
-.editor-card-actions {
-  margin-top: auto;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.85rem;
-  padding-top: 0.25rem;
-}
-
-.editor-card-button-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.editor-card-hint {
-  color: var(--muted-foreground);
-  font-size: 0.78rem;
-  line-height: 1.65;
-}
-
-.editor-settings-copy {
-  margin-top: -0.1rem;
 }
 
 .editor-side-card-cover {
@@ -2307,10 +2089,6 @@ img {
     grid-template-columns: 1fr;
   }
 
-  .editor-summary-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
   .editor-asset-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -2322,14 +2100,12 @@ img {
 
 @media (max-width: 900px) {
   .shell-stage,
-  .loading-board,
-  .editor-screen {
+  .loading-board {
     grid-template-columns: 1fr;
   }
 
   .shell-sidebar,
-  .loading-sidebar,
-  .editor-sidebar {
+  .loading-sidebar {
     position: static;
     height: auto;
   }
@@ -2397,10 +2173,6 @@ img {
 
   .editor-header-actions {
     width: 100%;
-  }
-
-  .editor-summary-grid {
-    grid-template-columns: 1fr;
   }
 
   .editor-ghost-button,

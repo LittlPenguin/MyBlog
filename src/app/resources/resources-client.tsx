@@ -1,6 +1,7 @@
 "use client";
 
 import { startTransition, useDeferredValue, useMemo, useState } from "react";
+import Image from "next/image";
 import { Search } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { Reveal } from "@/components/motion/reveal";
@@ -130,9 +131,22 @@ export function ResourcesClient({
             >
               <GlassPanel className="resource-card-shell flex h-full flex-col p-6">
                 <div className="flex items-start justify-between gap-4">
-                  <div className="inline-flex h-12 w-12 items-center justify-center rounded-[18px] bg-white text-sm font-heading font-black tracking-[-0.04em] text-primary shadow-[var(--shadow-near)]">
-                    {resource.monogram}
-                  </div>
+                  {resource.cover ? (
+                    <div className="h-20 w-28 overflow-hidden rounded-[22px] border border-white/60 bg-white/70 shadow-[var(--shadow-near)]">
+                      <Image
+                        src={resource.cover}
+                        alt={resource.title}
+                        width={560}
+                        height={400}
+                        className="h-full w-full object-cover"
+                        sizes="224px"
+                      />
+                    </div>
+                  ) : (
+                    <div className="inline-flex h-12 w-12 items-center justify-center rounded-[18px] bg-white text-sm font-heading font-black tracking-[-0.04em] text-primary shadow-[var(--shadow-near)]">
+                      {resource.monogram}
+                    </div>
+                  )}
                   <RatingStars value={resource.rating} />
                 </div>
                 <h2 className="mt-5 font-heading text-2xl font-black tracking-[-0.05em] text-foreground">

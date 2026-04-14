@@ -11,6 +11,7 @@ export type BaseContentFrontmatter = {
   draft: boolean;
   hidden: boolean;
   assetNames: string[];
+  assetPaths?: string[];
 };
 
 export type ResourceContentFrontmatter = BaseContentFrontmatter & {

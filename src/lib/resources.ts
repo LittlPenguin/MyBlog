@@ -32,6 +32,7 @@ function normalizeResourceItem(resource: Partial<ResourceItem> & Pick<ResourceIt
     rating: resource.rating ?? 4,
     accent: resource.accent ?? "primary",
     monogram: resource.monogram ?? createResourceMonogram(resource.title),
+    assetPaths: resource.assetPaths ?? [],
   };
 }
 

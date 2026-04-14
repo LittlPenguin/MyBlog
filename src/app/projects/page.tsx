@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import { ArrowUpRight, Boxes, Grid2x2, Sparkles, SquareStack } from "lucide-react";
 import { Reveal } from "@/components/motion/reveal";
 import { RouteLink } from "@/components/site/route-link";
@@ -64,11 +65,24 @@ export default async function ProjectsPage() {
               <GlassPanel className="group flex h-full flex-col justify-between p-6 transition hover:-translate-y-1">
                 <div className="space-y-5">
                   <div className="flex items-start justify-between gap-4">
-                    <div
-                      className={`inline-flex h-12 w-12 items-center justify-center rounded-[18px] ${accentClasses(project.accent)}`}
-                    >
-                      <Icon className="h-5 w-5" />
-                    </div>
+                    {project.cover ? (
+                      <div className="h-24 w-36 overflow-hidden rounded-[24px] border border-white/60 bg-white/70 shadow-[var(--shadow-near)]">
+                        <Image
+                          src={project.cover}
+                          alt={project.title}
+                          width={720}
+                          height={480}
+                          className="h-full w-full object-cover"
+                          sizes="288px"
+                        />
+                      </div>
+                    ) : (
+                      <div
+                        className={`inline-flex h-12 w-12 items-center justify-center rounded-[18px] ${accentClasses(project.accent)}`}
+                      >
+                        <Icon className="h-5 w-5" />
+                      </div>
+                    )}
                     <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                       {project.year}
                     </span>

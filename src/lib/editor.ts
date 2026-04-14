@@ -2,33 +2,25 @@ import matter from "gray-matter";
 export { EDITOR_CATEGORIES } from "./editor-shared.js";
 export type {
   EditorAttachmentAsset,
-  EditorDraftListItem,
   EditorDraftSource,
   EditorCategory,
   EditorCoverAsset,
   EditorDraft,
   EditorFieldErrors,
   EditorFileAsset,
-  EditorMediaReference,
   EditorMode,
-  EditorPreferences,
-  EditorSection,
 } from "./editor-shared.js";
 import { EDITOR_CATEGORIES } from "./editor-shared.js";
 import type {
   EditorAttachmentAsset,
-  EditorDraftListItem,
   EditorDraftSource,
   EditorCategory,
   EditorCoverAsset,
   EditorDraft,
   EditorFieldErrors,
-  EditorFileAsset,
-  EditorMediaReference,
   EditorMode,
-  EditorPreferences,
-  EditorSection,
 } from "./editor-shared.js";
+
 export type EditorAssetKind =
   | "image"
   | "pdf"
@@ -40,21 +32,6 @@ export type EditorAssetKind =
 
 export type EditorSubmitPayload = EditorDraft & {
   source?: EditorDraftSource | null;
-};
-
-export type EditorSubmitResult = {
-  ok: boolean;
-  message: string;
-  errors?: EditorFieldErrors;
-  preview?: {
-    slug: string;
-    category: EditorCategory;
-    receivedAt: string;
-    scheduleAt: string | null;
-    isHidden: boolean;
-    coverName: string | null;
-    assetCount: number;
-  };
 };
 
 type DeriveEditorDraftOptions = {
@@ -72,16 +49,6 @@ type ApplyEditorTitleChangeResult = {
   draft: EditorDraft;
   isSlugTouched: boolean;
 };
-
-const DEFAULT_EDITOR_PREFERENCES: EditorPreferences = {
-  defaultCategory: "archive",
-  defaultHidden: false,
-  autoSyncSlug: true,
-  preferFrontmatterOnImport: true,
-  defaultMode: "edit",
-};
-
-export const EDITOR_PREFERENCES_STORAGE_KEY = "myblog.editor.preferences.v1";
 
 function isEditorCategory(value: unknown): value is EditorCategory {
   return typeof value === "string" && EDITOR_CATEGORIES.includes(value as EditorCategory);
@@ -138,53 +105,19 @@ function getFileExtension(name: string) {
 }
 
 export function createEmptyEditorDraft(
-  partialPreferences: Partial<Pick<EditorPreferences, "defaultCategory" | "defaultHidden">> = {},
-): EditorDraft {
-  return createEmptyEditorDraftFromPreferences(partialPreferences);
-}
-
-function createEmptyEditorDraftFromPreferences(
-  partialPreferences: Partial<Pick<EditorPreferences, "defaultCategory" | "defaultHidden">> = {},
+  partial: Partial<Pick<EditorDraft, "category" | "isHidden">> = {},
 ): EditorDraft {
   return {
     title: "",
     slug: "",
     summary: "",
     content: "",
-    category: partialPreferences.defaultCategory ?? DEFAULT_EDITOR_PREFERENCES.defaultCategory,
+    category: partial.category ?? "archive",
     tags: [],
     scheduleAt: null,
-    isHidden: partialPreferences.defaultHidden ?? DEFAULT_EDITOR_PREFERENCES.defaultHidden,
+    isHidden: partial.isHidden ?? false,
     cover: null,
     assets: [],
-  };
-}
-
-export function createDefaultEditorPreferences(): EditorPreferences {
-  return { ...DEFAULT_EDITOR_PREFERENCES };
-}
-
-export function resolveEditorPreferences(input: unknown): EditorPreferences {
-  const defaults = createDefaultEditorPreferences();
-
-  if (!input || typeof input !== "object") {
-    return defaults;
-  }
-
-  const value = input as Partial<Record<keyof EditorPreferences, unknown>>;
-
-  return {
-    defaultCategory: isEditorCategory(value.defaultCategory) ? value.defaultCategory : defaults.defaultCategory,
-    defaultHidden: typeof value.defaultHidden === "boolean" ? value.defaultHidden : defaults.defaultHidden,
-    autoSyncSlug: typeof value.autoSyncSlug === "boolean" ? value.autoSyncSlug : defaults.autoSyncSlug,
-    preferFrontmatterOnImport:
-      typeof value.preferFrontmatterOnImport === "boolean"
-        ? value.preferFrontmatterOnImport
-        : defaults.preferFrontmatterOnImport,
-    defaultMode:
-      value.defaultMode === "preview" || value.defaultMode === "edit"
-        ? value.defaultMode
-        : defaults.defaultMode,
   };
 }
 
@@ -282,6 +215,7 @@ export function buildAttachmentAsset(file: Pick<File, "name" | "type" | "size">,
     type: file.type,
     size: file.size,
     previewUrl,
+    persistedPath: null,
   } satisfies EditorAttachmentAsset;
 }
 
@@ -291,25 +225,36 @@ export function buildCoverAsset(file: Pick<File, "name" | "type" | "size">, prev
     type: file.type,
     size: file.size,
     previewUrl,
+    persistedPath: null,
   } satisfies EditorCoverAsset;
 }
 
-export function buildAttachmentAssetReference(name: string, previewUrl: string | null = null): EditorAttachmentAsset {
+export function buildAttachmentAssetReference(
+  name: string,
+  previewUrl: string | null = null,
+  persistedPath: string | null = null,
+): EditorAttachmentAsset {
   return {
     id: createDeterministicFileId(name, 0, "file"),
     name,
     type: "",
     size: 0,
     previewUrl,
+    persistedPath,
   };
 }
 
-export function buildCoverAssetReference(name: string, previewUrl: string | null = null): EditorCoverAsset {
+export function buildCoverAssetReference(
+  name: string,
+  previewUrl: string | null = null,
+  persistedPath: string | null = null,
+): EditorCoverAsset {
   return {
     name,
     type: "",
     size: 0,
     previewUrl,
+    persistedPath,
   };
 }
 
@@ -350,7 +295,7 @@ export function validateEditorDraft(draft: EditorDraft): EditorFieldErrors {
 }
 
 export function prepareEditorSubmitPayload(draft: EditorDraft): EditorSubmitPayload {
-  const normalized: EditorSubmitPayload = {
+  return {
     ...draft,
     title: draft.title.trim(),
     slug: normalizeSlug(draft.slug),
@@ -364,6 +309,7 @@ export function prepareEditorSubmitPayload(draft: EditorDraft): EditorSubmitPayl
           type: draft.cover.type,
           size: draft.cover.size,
           previewUrl: draft.cover.previewUrl,
+          persistedPath: draft.cover.persistedPath ?? null,
         }
       : null,
     assets: (draft.assets ?? []).map((asset) => ({
@@ -372,10 +318,9 @@ export function prepareEditorSubmitPayload(draft: EditorDraft): EditorSubmitPayl
       type: asset.type,
       size: asset.size,
       previewUrl: asset.previewUrl,
+      persistedPath: asset.persistedPath ?? null,
     })),
   };
-
-  return normalized;
 }
 
 function extractSummaryFromMarkdown(content: string) {
@@ -403,9 +348,10 @@ export function deriveEditorDraftFromMarkdown(source: string, options: DeriveEdi
     typeof data.summary === "string" && data.summary.trim()
       ? data.summary.trim()
       : extractSummaryFromMarkdown(content);
-  const tags = preferFrontmatter && Array.isArray(data.tags)
-    ? normalizeTags(data.tags.filter((tag): tag is string => typeof tag === "string"))
-    : [];
+  const tags =
+    preferFrontmatter && Array.isArray(data.tags)
+      ? normalizeTags(data.tags.filter((tag): tag is string => typeof tag === "string"))
+      : [];
   const category = preferFrontmatter && isEditorCategory(data.category) ? data.category : "archive";
   const slug =
     preferFrontmatter && typeof data.slug === "string" && data.slug.trim()
@@ -413,7 +359,7 @@ export function deriveEditorDraftFromMarkdown(source: string, options: DeriveEdi
       : normalizeSlug(inferredTitle);
 
   return {
-    ...createEmptyEditorDraftFromPreferences(),
+    ...createEmptyEditorDraft(),
     title: inferredTitle,
     slug,
     summary,
@@ -446,120 +392,5 @@ export function applyEditorTitleChange({
       slug: normalizeSlug(nextTitle),
     },
     isSlugTouched,
-  };
-}
-
-function normalizeComparableScheduleAt(value: string | null | undefined) {
-  return value?.trim() ?? "";
-}
-
-export function hasMeaningfulEditorChanges(draft: EditorDraft, baseline: EditorDraft) {
-  return (
-    draft.title.trim() !== baseline.title.trim() ||
-    draft.slug.trim() !== baseline.slug.trim() ||
-    draft.summary.trim() !== baseline.summary.trim() ||
-    draft.content.trim() !== baseline.content.trim() ||
-    draft.category !== baseline.category ||
-    draft.isHidden !== baseline.isHidden ||
-    normalizeComparableScheduleAt(draft.scheduleAt) !== normalizeComparableScheduleAt(baseline.scheduleAt) ||
-    normalizeTags(draft.tags).join("|") !== normalizeTags(baseline.tags).join("|") ||
-    (draft.cover?.name ?? "") !== (baseline.cover?.name ?? "") ||
-    draft.assets.length !== baseline.assets.length ||
-    draft.assets.some((asset, index) => asset.name !== baseline.assets[index]?.name)
-  );
-}
-
-export function countEditorDraftStatuses(items: EditorDraftListItem[]) {
-  return items.reduce(
-    (summary, item) => {
-      summary.total += 1;
-
-      if (item.statusLabel === "draft") {
-        summary.draftOnly += 1;
-      } else if (item.statusLabel === "hidden") {
-        summary.hiddenOnly += 1;
-      } else {
-        summary.mixed += 1;
-      }
-
-      return summary;
-    },
-    {
-      total: 0,
-      draftOnly: 0,
-      hiddenOnly: 0,
-      mixed: 0,
-    },
-  );
-}
-
-export function countEditorMediaReferences(items: EditorMediaReference[]) {
-  return items.reduce(
-    (summary, item) => {
-      summary.total += 1;
-
-      if (item.role === "cover") {
-        summary.covers += 1;
-      } else {
-        summary.assets += 1;
-      }
-
-      if (item.isDraft) {
-        summary.draftBacked += 1;
-      }
-
-      return summary;
-    },
-    {
-      total: 0,
-      covers: 0,
-      assets: 0,
-      draftBacked: 0,
-    },
-  );
-}
-
-export function summarizeEditorPreferences(preferences: EditorPreferences) {
-  return {
-    defaultCategoryLabel:
-      preferences.defaultCategory === "archive"
-        ? "归档"
-        : preferences.defaultCategory === "project"
-          ? "项目"
-          : "资源",
-    visibilityLabel: preferences.defaultHidden ? "Private" : "Public",
-    slugModeLabel: preferences.autoSyncSlug ? "Auto" : "Manual",
-    importModeLabel: preferences.preferFrontmatterOnImport ? "Frontmatter" : "Content First",
-    defaultModeLabel: preferences.defaultMode === "edit" ? "编辑" : "预览",
-  };
-}
-
-export function createEditorSubmitResult(
-  draft: EditorDraft,
-  now: () => string = () => new Date().toISOString(),
-): EditorSubmitResult {
-  const normalized = prepareEditorSubmitPayload(draft);
-  const errors = validateEditorDraft(normalized);
-
-  if (Object.keys(errors).length > 0) {
-    return {
-      ok: false,
-      message: "发布失败，请先修正表单中的必填项。",
-      errors,
-    };
-  }
-
-  return {
-    ok: true,
-    message: "接口占位成功，文章发布请求已接收。",
-    preview: {
-      slug: normalized.slug,
-      category: normalized.category,
-      receivedAt: now(),
-      scheduleAt: normalized.scheduleAt,
-      isHidden: normalized.isHidden,
-      coverName: normalized.cover?.name ?? null,
-      assetCount: normalized.assets.length,
-    },
   };
 }

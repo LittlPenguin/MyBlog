@@ -1,4 +1,4 @@
-import type { EditorCategory, EditorFieldErrors } from "./editor-shared";
+import type { EditorCategory, EditorDraft, EditorDraftSource, EditorFieldErrors } from "./editor-shared";
 
 export type EditorWriteResult =
   | {
@@ -7,6 +7,8 @@ export type EditorWriteResult =
       slug: string;
       category: EditorCategory;
       outputPath: string;
+      draft: EditorDraft;
+      source: EditorDraftSource;
     }
   | {
       ok: false;

@@ -1,16 +1,12 @@
 "use client";
 
 import {
-  Edit3,
   FileArchive,
   FileCode2,
   FileImage,
   FileMusic,
   FileText,
   FileVideo,
-  Folder,
-  Image as ImageIcon,
-  Settings2,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -22,37 +18,24 @@ import {
   type EditorAttachmentAsset,
   type EditorCategory,
   type EditorDraft,
-  type EditorSection,
-  type EditorPreferences,
 } from "@/lib/editor";
 
 export const INITIAL_TEMPLATE = `# 新文章标题
+
 在这里开始写作。支持常见的 Markdown 语法：
 - 列表
 - **加粗**
 - \`行内代码\`
 
 ## 一个小节
-写下这篇文章真正想表达的核心观点。`;
 
-export type EditorNavItem = {
-  section: EditorSection;
-  label: string;
-  icon: LucideIcon;
-};
+写下这篇文章真正想表达的核心观点。`;
 
 export type AssetVisualMeta = {
   kind: EditorAssetKind;
   icon: LucideIcon;
   label: string;
 };
-
-export const EDITOR_NAV_ITEMS: EditorNavItem[] = [
-  { section: "compose", label: "写作", icon: Edit3 },
-  { section: "drafts", label: "草稿", icon: Folder },
-  { section: "media", label: "媒体", icon: ImageIcon },
-  { section: "settings", label: "设置", icon: Settings2 },
-];
 
 export const CATEGORY_LABELS: Record<EditorCategory, string> = {
   archive: "归档",
@@ -70,9 +53,9 @@ export const ASSET_VISUALS: Record<EditorAssetKind, AssetVisualMeta> = {
   file: { kind: "file", icon: FileText, label: "文件" },
 };
 
-export function buildInitialDraft(preferences: Pick<EditorPreferences, "defaultCategory" | "defaultHidden">): EditorDraft {
+export function buildInitialDraft(): EditorDraft {
   return {
-    ...createEmptyEditorDraft(preferences),
+    ...createEmptyEditorDraft(),
     content: INITIAL_TEMPLATE,
   };
 }
@@ -94,7 +77,7 @@ export function describeAsset(asset: Pick<EditorAttachmentAsset, "name" | "type"
 
 export function buildAssetMetaLine(asset: Pick<EditorAttachmentAsset, "name" | "size" | "type">) {
   const visual = describeAsset(asset);
-  return `${visual.label} · ${formatEditorFileSize(asset.size)}`;
+  return `${visual.label} / ${formatEditorFileSize(asset.size)}`;
 }
 
 export function isSlugCustom(draft: Pick<EditorDraft, "title" | "slug">) {

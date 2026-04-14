@@ -6,21 +6,13 @@ import type {
   ProjectContentFrontmatter,
   ResourceContentFrontmatter,
 } from "./content-shared";
-import type {
-  EditorCategory,
-  EditorDraft,
-  EditorDraftListItem,
-  EditorDraftSource,
-  EditorFieldErrors,
-  EditorMediaReference,
-} from "./editor-shared";
+import type { EditorCategory, EditorDraft, EditorDraftSource, EditorFieldErrors } from "./editor-shared";
 import {
   buildAttachmentAssetReference,
   buildCoverAssetReference,
   createEmptyEditorDraft,
   type EditorSubmitPayload,
   prepareEditorSubmitPayload,
-  resolveEditorAssetKind,
 } from "./editor.js";
 import type { EditorWriteResult } from "./publish-shared";
 
@@ -40,15 +32,19 @@ export type ContentCollectionItem<T extends BaseContentFrontmatter = BaseContent
 
 export type EditorWritePayload = EditorSubmitPayload;
 
-type ContentFileDescriptor = {
-  category: EditorCategory;
-  filePath: string;
-  slug: string;
+export type EditorUploadedFile = {
+  name: string;
+  type: string;
+  size: number;
+  buffer: Uint8Array;
 };
 
-type ParsedEditorDraft = {
-  draft: EditorDraft;
-  source: EditorDraftSource;
+type PersistedEditorAssets = {
+  coverPath: string | null;
+  assetEntries: Array<{
+    name: string;
+    path: string | null;
+  }>;
 };
 
 export type EditorWriteValidationResult =
@@ -130,6 +126,13 @@ export function createEditorWritePayload(draft: EditorDraft) {
 export function createBaseContentFrontmatter(
   payload: EditorWritePayload,
   now: () => string = () => new Date().toISOString(),
+  persistedAssets: PersistedEditorAssets = {
+    coverPath: payload.cover?.persistedPath ?? payload.cover?.name ?? null,
+    assetEntries: payload.assets.map((asset) => ({
+      name: asset.name,
+      path: asset.persistedPath ?? null,
+    })),
+  },
 ): BaseContentFrontmatter {
   const base: BaseContentFrontmatter = {
     title: payload.title,
@@ -139,11 +142,14 @@ export function createBaseContentFrontmatter(
     date: resolvePublishDate(payload.scheduleAt, now),
     category: CATEGORY_LABELS[payload.category],
     tags: payload.tags,
-    cover: payload.cover?.name,
+    cover: persistedAssets.coverPath ?? undefined,
     featured: false,
     draft: payload.isHidden,
     hidden: payload.isHidden,
-    assetNames: payload.assets.map((asset) => asset.name),
+    assetNames: persistedAssets.assetEntries.map((entry) => entry.name),
+    assetPaths: persistedAssets.assetEntries
+      .map((entry) => entry.path)
+      .filter((value): value is string => Boolean(value)),
   };
 
   if (payload.category === "resource") {
@@ -174,9 +180,10 @@ export function createContentFileBody({
 export function buildContentFileSource(
   payload: EditorWritePayload,
   now: () => string = () => new Date().toISOString(),
+  persistedAssets?: PersistedEditorAssets,
 ) {
   return createContentFileBody({
-    frontmatter: createBaseContentFrontmatter(payload, now),
+    frontmatter: createBaseContentFrontmatter(payload, now, persistedAssets),
     content: payload.content,
   });
 }
@@ -219,47 +226,6 @@ function getAbsoluteContentFilePath({
   return path.join(rootDir, getContentDirectoryForCategory(category), `${slug}.mdx`);
 }
 
-async function readContentFileDescriptor(rootDir: string) {
-  const categories = Object.keys(CONTENT_CATEGORY_DIRECTORY) as EditorCategory[];
-
-  const collections = await Promise.all(
-    categories.map(async (category) => {
-      const directory = path.join(rootDir, getContentDirectoryForCategory(category));
-      const entries = await fs.readdir(directory, { withFileTypes: true }).catch(() => []);
-
-      return entries
-        .filter((entry) => entry.isFile() && entry.name.endsWith(".mdx"))
-        .map((entry) => ({
-          category,
-          filePath: path.join(directory, entry.name),
-          slug: entry.name.replace(/\.mdx$/, ""),
-        }) satisfies ContentFileDescriptor);
-    }),
-  );
-
-  return collections.flat();
-}
-
-function resolveDraftStatusLabel(meta: BaseContentFrontmatter): EditorDraftListItem["statusLabel"] | null {
-  if (meta.draft && meta.hidden) {
-    return "draft-hidden";
-  }
-
-  if (meta.draft) {
-    return "draft";
-  }
-
-  if (meta.hidden) {
-    return "hidden";
-  }
-
-  return null;
-}
-
-function createEditorMediaId(reference: Pick<EditorMediaReference, "category" | "sourceSlug" | "role" | "name">) {
-  return `${reference.category}:${reference.sourceSlug}:${reference.role}:${reference.name}`;
-}
-
 function inferDraftScheduleAt(date: string | undefined) {
   if (!date) {
     return null;
@@ -272,132 +238,180 @@ function toRelativeOutputPath(absoluteOutputPath: string) {
   return path.relative(process.cwd(), absoluteOutputPath).replaceAll("\\", "/");
 }
 
-export async function getEditorDraftLists(rootDir: string): Promise<EditorDraftListItem[]> {
-  const descriptors = await readContentFileDescriptor(rootDir);
+function sanitizeAssetBaseName(name: string) {
+  const parsed = path.parse(name);
+  const base = parsed.name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9\u4e00-\u9fa5_-]+/gi, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
 
-  const entries = await Promise.all(
-    descriptors.map(async (descriptor) => {
-      const item = await parseContentCollectionItem(descriptor.filePath);
-      const stats = await fs.stat(descriptor.filePath);
-      const statusLabel = resolveDraftStatusLabel(item.meta);
-
-      if (!statusLabel) {
-        return null;
-      }
-
-      return {
-        title: item.meta.title,
-        slug: item.meta.slug,
-        summary: item.meta.summary,
-        category: descriptor.category,
-        tags: item.meta.tags,
-        date: item.meta.date,
-        updatedAt: stats.mtime.toISOString(),
-        statusLabel,
-      } satisfies EditorDraftListItem;
-    }),
-  );
-
-  return entries
-    .filter((entry): entry is EditorDraftListItem => entry !== null)
-    .sort((a, b) => +new Date(b.updatedAt) - +new Date(a.updatedAt));
+  const extension = parsed.ext.toLowerCase().replace(/[^.\w-]+/g, "");
+  return `${base || "asset"}${extension}`;
 }
 
-export async function parseEditorDraftForEditing({
-  rootDir,
-  category,
-  slug,
-}: {
-  rootDir: string;
-  category: EditorCategory;
-  slug: string;
-}): Promise<ParsedEditorDraft | null> {
-  const filePath = getAbsoluteContentFilePath({ rootDir, category, slug });
-  const source = await fs.readFile(filePath, "utf8").catch(() => null);
+function sanitizeAssetSlugPart(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9\u4e00-\u9fa5-]+/gi, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
 
-  if (!source) {
-    return null;
+function getPublicAssetDirectory(category: EditorCategory, slug: string) {
+  return path.join(process.cwd(), "public", "uploads", getContentDirectoryForCategory(category), sanitizeAssetSlugPart(slug));
+}
+
+function getPublicAssetPrefix(category: EditorCategory, slug: string) {
+  return `/uploads/${getContentDirectoryForCategory(category)}/${sanitizeAssetSlugPart(slug)}`;
+}
+
+async function readFileIfExists(filePath: string) {
+  try {
+    return await fs.readFile(filePath);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException)?.code === "ENOENT") {
+      return null;
+    }
+    throw error;
+  }
+}
+
+async function copyPersistedAssetFile(fromPath: string, toPath: string) {
+  const sourcePath = path.join(process.cwd(), "public", fromPath.replace(/^\//, "").replaceAll("/", path.sep));
+  const file = await readFileIfExists(sourcePath);
+
+  if (!file) {
+    return false;
   }
 
-  const { data, content } = matter(source);
-  const meta = data as BaseContentFrontmatter;
+  await fs.mkdir(path.dirname(toPath), { recursive: true });
+  await fs.writeFile(toPath, file);
+  return true;
+}
+
+async function removeDirectoryIfExists(directoryPath: string) {
+  await fs.rm(directoryPath, { recursive: true, force: true }).catch((error: NodeJS.ErrnoException) => {
+    if (error?.code !== "ENOENT") {
+      throw error;
+    }
+  });
+}
+
+async function persistEditorAssets({
+  payload,
+  coverUpload,
+  assetUploads,
+}: {
+  payload: EditorWritePayload;
+  coverUpload?: EditorUploadedFile | null;
+  assetUploads?: EditorUploadedFile[];
+}): Promise<PersistedEditorAssets> {
+  const assetDirectory = getPublicAssetDirectory(payload.category, payload.slug);
+  const assetPrefix = getPublicAssetPrefix(payload.category, payload.slug);
+
+  await removeDirectoryIfExists(assetDirectory);
+
+  let coverPath: string | null = null;
+
+  if (coverUpload) {
+    const fileName = `cover${path.extname(coverUpload.name).toLowerCase() || ".bin"}`;
+    await fs.mkdir(assetDirectory, { recursive: true });
+    await fs.writeFile(path.join(assetDirectory, fileName), coverUpload.buffer);
+    coverPath = `${assetPrefix}/${fileName}`;
+  } else if (payload.cover?.persistedPath?.startsWith("/")) {
+    const nextCoverPath = `${assetPrefix}/cover${path.extname(payload.cover.persistedPath).toLowerCase() || ".bin"}`;
+    const copied = await copyPersistedAssetFile(
+      payload.cover.persistedPath,
+      path.join(assetDirectory, path.basename(nextCoverPath)),
+    );
+    coverPath = copied ? nextCoverPath : payload.cover.persistedPath;
+  }
+
+  const uploadsByName = new Map((assetUploads ?? []).map((upload) => [upload.name, upload]));
+  const assetEntries: PersistedEditorAssets["assetEntries"] = [];
+
+  for (const asset of payload.assets) {
+    const upload = uploadsByName.get(asset.name);
+
+    if (upload) {
+      const fileName = sanitizeAssetBaseName(upload.name);
+      await fs.mkdir(path.join(assetDirectory, "assets"), { recursive: true });
+      await fs.writeFile(path.join(assetDirectory, "assets", fileName), upload.buffer);
+      assetEntries.push({
+        name: asset.name,
+        path: `${assetPrefix}/assets/${fileName}`,
+      });
+      continue;
+    }
+
+    if (asset.persistedPath?.startsWith("/")) {
+      const nextAssetPath = `${assetPrefix}/assets/${sanitizeAssetBaseName(asset.name)}`;
+      const copied = await copyPersistedAssetFile(
+        asset.persistedPath,
+        path.join(assetDirectory, "assets", path.basename(nextAssetPath)),
+      );
+      assetEntries.push({
+        name: asset.name,
+        path: copied ? nextAssetPath : asset.persistedPath,
+      });
+      continue;
+    }
+
+    assetEntries.push({
+      name: asset.name,
+      path: null,
+    });
+  }
+
+  return {
+    coverPath,
+    assetEntries,
+  };
+}
+
+export function createPersistedEditorDraft({
+  category,
+  slug,
+  frontmatter,
+  content,
+}: {
+  category: EditorCategory;
+  slug: string;
+  frontmatter: BaseContentFrontmatter;
+  content: string;
+}): {
+  draft: EditorDraft;
+  source: EditorDraftSource;
+} {
+  const assetNames = frontmatter.assetNames ?? [];
+  const assetPaths = frontmatter.assetPaths ?? [];
 
   return {
     draft: {
       ...createEmptyEditorDraft(),
-      title: meta.title,
-      slug: meta.slug,
-      summary: meta.summary,
+      title: frontmatter.title,
+      slug: frontmatter.slug,
+      summary: frontmatter.summary,
       content: content.replace(/^\n+/, ""),
       category,
-      tags: meta.tags,
-      scheduleAt: inferDraftScheduleAt(meta.date),
-      isHidden: Boolean(meta.hidden || meta.draft),
-      cover: meta.cover ? buildCoverAssetReference(meta.cover) : null,
-      assets: (meta.assetNames ?? []).map((name) => buildAttachmentAssetReference(name)),
+      tags: frontmatter.tags,
+      scheduleAt: inferDraftScheduleAt(frontmatter.date),
+      isHidden: Boolean(frontmatter.hidden || frontmatter.draft),
+      cover: frontmatter.cover
+        ? buildCoverAssetReference(path.basename(frontmatter.cover), frontmatter.cover, frontmatter.cover)
+        : null,
+      assets: assetNames.map((name, index) =>
+        buildAttachmentAssetReference(name, assetPaths[index] ?? null, assetPaths[index] ?? null),
+      ),
     },
     source: {
       originalCategory: category,
       originalSlug: slug,
     },
   };
-}
-
-export async function collectEditorMediaReferences(rootDir: string): Promise<EditorMediaReference[]> {
-  const descriptors = await readContentFileDescriptor(rootDir);
-
-  const entries = await Promise.all(
-    descriptors.map(async (descriptor) => {
-      const item = await parseContentCollectionItem(descriptor.filePath);
-      const isDraft = Boolean(item.meta.draft || item.meta.hidden);
-      const references: EditorMediaReference[] = [];
-
-      if (item.meta.cover) {
-        const coverKind = resolveEditorAssetKind({ name: item.meta.cover, type: "" });
-        references.push({
-          id: createEditorMediaId({
-            category: descriptor.category,
-            sourceSlug: item.meta.slug,
-            role: "cover",
-            name: item.meta.cover,
-          }),
-          name: item.meta.cover,
-          role: "cover",
-          kind: coverKind,
-          category: descriptor.category,
-          sourceSlug: item.meta.slug,
-          sourceTitle: item.meta.title,
-          sourceDate: item.meta.date,
-          isDraft,
-        });
-      }
-
-      for (const assetName of item.meta.assetNames ?? []) {
-        references.push({
-          id: createEditorMediaId({
-            category: descriptor.category,
-            sourceSlug: item.meta.slug,
-            role: "asset",
-            name: assetName,
-          }),
-          name: assetName,
-          role: "asset",
-          kind: resolveEditorAssetKind({ name: assetName, type: "" }),
-          category: descriptor.category,
-          sourceSlug: item.meta.slug,
-          sourceTitle: item.meta.title,
-          sourceDate: item.meta.date,
-          isDraft,
-        });
-      }
-
-      return references;
-    }),
-  );
-
-  return entries
-    .flat()
-    .sort((a, b) => +new Date(b.sourceDate) - +new Date(a.sourceDate));
 }
 
 export async function validateEditorWriteTarget({
@@ -438,41 +452,65 @@ async function writeContentAtPath({
   absoluteOutputPath,
   payload,
   now,
+  persistedAssets,
 }: {
   absoluteOutputPath: string;
   payload: EditorWritePayload;
   now?: () => string;
+  persistedAssets?: PersistedEditorAssets;
 }) {
   await fs.mkdir(path.dirname(absoluteOutputPath), { recursive: true });
-  const source = buildContentFileSource(payload, now);
+  const source = buildContentFileSource(payload, now, persistedAssets);
   await fs.writeFile(absoluteOutputPath, source, "utf8");
 }
 
 export function buildEditorWriteResult({
-  slug,
-  category,
+  payload,
   outputPath,
+  persistedAssets = {
+    coverPath: payload.cover?.persistedPath ?? payload.cover?.name ?? null,
+    assetEntries: payload.assets.map((asset) => ({
+      name: asset.name,
+      path: asset.persistedPath ?? null,
+    })),
+  },
+  now = () => new Date().toISOString(),
 }: {
-  slug: string;
-  category: EditorCategory;
+  payload: EditorWritePayload;
   outputPath: string;
+  persistedAssets?: PersistedEditorAssets;
+  now?: () => string;
 }): EditorWriteResult {
+  const frontmatter = createBaseContentFrontmatter(payload, now, persistedAssets);
+  const persisted = createPersistedEditorDraft({
+    category: payload.category,
+    slug: payload.slug,
+    frontmatter,
+    content: payload.content,
+  });
+
   return {
     ok: true,
-    message: `内容已写入${CATEGORY_LABELS[category]}目录。`,
-    slug,
-    category,
+    message: `内容已写入${CATEGORY_LABELS[payload.category]}目录。`,
+    slug: payload.slug,
+    category: payload.category,
     outputPath,
+    draft: persisted.draft,
+    source: persisted.source,
   };
 }
 
 export async function writeEditorContentFile({
   rootDir,
   payload,
+  coverUpload,
+  assetUploads,
   now,
 }: {
   rootDir: string;
   payload: EditorWritePayload;
+  coverUpload?: EditorUploadedFile | null;
+  assetUploads?: EditorUploadedFile[];
   now?: () => string;
 }): Promise<EditorWriteResult> {
   const validation = await validateEditorWriteTarget({
@@ -488,33 +526,44 @@ export async function writeEditorContentFile({
   const targetDirectory = path.join(rootDir, getContentDirectoryForCategory(payload.category));
   await fs.mkdir(targetDirectory, { recursive: true });
 
+  const persistedAssets = await persistEditorAssets({
+    payload,
+    coverUpload,
+    assetUploads,
+  });
   const absoluteOutputPath = path.join(targetDirectory, `${payload.slug}.mdx`);
   await writeContentAtPath({
     absoluteOutputPath,
     payload,
+    persistedAssets,
     now,
   });
 
   return buildEditorWriteResult({
-    slug: payload.slug,
-    category: payload.category,
+    payload,
     outputPath: toRelativeOutputPath(absoluteOutputPath),
+    persistedAssets,
+    now,
   });
 }
 
 export async function updateEditorContentFile({
   rootDir,
   payload,
+  coverUpload,
+  assetUploads,
   now,
 }: {
   rootDir: string;
   payload: EditorWritePayload;
+  coverUpload?: EditorUploadedFile | null;
+  assetUploads?: EditorUploadedFile[];
   now?: () => string;
 }): Promise<EditorWriteResult> {
   const source = payload.source;
 
   if (!source) {
-    return writeEditorContentFile({ rootDir, payload, now });
+    return writeEditorContentFile({ rootDir, payload, coverUpload, assetUploads, now });
   }
 
   const originalPath = getAbsoluteContentFilePath({
@@ -541,9 +590,21 @@ export async function updateEditorContentFile({
     }
   }
 
+  const originalAssetDirectory = getPublicAssetDirectory(source.originalCategory, source.originalSlug);
+  const nextAssetDirectory = getPublicAssetDirectory(payload.category, payload.slug);
+  if (originalAssetDirectory !== nextAssetDirectory) {
+    await removeDirectoryIfExists(originalAssetDirectory);
+  }
+
+  const persistedAssets = await persistEditorAssets({
+    payload,
+    coverUpload,
+    assetUploads,
+  });
   await writeContentAtPath({
     absoluteOutputPath: nextPath,
     payload,
+    persistedAssets,
     now,
   });
 
@@ -552,46 +613,9 @@ export async function updateEditorContentFile({
   }
 
   return buildEditorWriteResult({
-    slug: payload.slug,
-    category: payload.category,
+    payload,
     outputPath: toRelativeOutputPath(nextPath),
+    persistedAssets,
+    now,
   });
-}
-
-export async function writeEditorDraftPublishedState({
-  rootDir,
-  category,
-  slug,
-}: {
-  rootDir: string;
-  category: EditorCategory;
-  slug: string;
-}): Promise<EditorWriteResult> {
-  const filePath = getAbsoluteContentFilePath({ rootDir, category, slug });
-  const source = await fs.readFile(filePath, "utf8").catch(() => null);
-
-  if (!source) {
-    return {
-      ok: false,
-      message: "未找到目标草稿文件。",
-    };
-  }
-
-  const parsed = matter(source);
-  const nextFrontmatter = {
-    ...(parsed.data as BaseContentFrontmatter),
-    draft: false,
-    hidden: false,
-  };
-
-  const output = matter.stringify(parsed.content.trimEnd(), nextFrontmatter).trim() + "\n";
-  await fs.writeFile(filePath, output, "utf8");
-
-  return {
-    ok: true,
-    message: "草稿已发布为公开内容。",
-    slug,
-    category,
-    outputPath: toRelativeOutputPath(filePath),
-  };
 }

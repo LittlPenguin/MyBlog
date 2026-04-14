@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import { ArrowUpRight, ChevronLeft, ExternalLink, Layers3, Star } from "lucide-react";
 import { notFound } from "next/navigation";
 import { Reveal } from "@/components/motion/reveal";
@@ -112,6 +113,19 @@ export default async function ResourceDetailPage({ params, searchParams }: PageP
                   {resource.meta.url.replace(/^https?:\/\//, "")}
                 </span>
               </div>
+
+              {resource.meta.cover ? (
+                <div className="overflow-hidden rounded-[28px] border border-white/60 bg-white/55 p-2 shadow-[var(--shadow-far)]">
+                  <Image
+                    src={resource.meta.cover}
+                    alt={resource.meta.title}
+                    width={1600}
+                    height={900}
+                    className="h-auto w-full rounded-[22px] object-cover"
+                    sizes="(min-width: 1280px) 720px, 100vw"
+                  />
+                </div>
+              ) : null}
             </div>
           </GlassPanel>
 
@@ -180,6 +194,36 @@ export default async function ResourceDetailPage({ params, searchParams }: PageP
       <Reveal delay={0.05}>
         <GlassPanel className="p-6 md:p-10">
           <ResourceDetailContent source={resource.rawContent} />
+
+          {resource.meta.assetNames.length > 0 ? (
+            <div className="mt-10 space-y-3 border-t border-white/45 pt-8">
+              <h2 className="font-heading text-2xl font-black tracking-[-0.05em] text-foreground">资源附件</h2>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {resource.meta.assetNames.map((name, index) => {
+                  const href = resource.meta.assetPaths?.[index] ?? null;
+                  const card = (
+                    <SoftPanel className="flex items-center justify-between gap-3 p-4 transition hover:-translate-y-0.5">
+                      <div>
+                        <p className="font-medium text-foreground">{name}</p>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          {href ? href.replace(/^\/+/, "") : "仅保留元数据引用"}
+                        </p>
+                      </div>
+                      <ArrowUpRight className="h-4 w-4 text-primary" />
+                    </SoftPanel>
+                  );
+
+                  return href ? (
+                    <a key={name} href={href} target="_blank" rel="noreferrer">
+                      {card}
+                    </a>
+                  ) : (
+                    <div key={name}>{card}</div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
         </GlassPanel>
       </Reveal>
     </div>
