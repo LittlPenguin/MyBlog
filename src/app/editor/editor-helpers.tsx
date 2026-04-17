@@ -10,26 +10,18 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import {
+  applyEditorCategoryChange,
   createEmptyEditorDraft,
   formatEditorFileSize,
   normalizeSlug,
   resolveEditorAssetKind,
   type EditorAssetKind,
+  type EditorAccent,
   type EditorAttachmentAsset,
   type EditorCategory,
   type EditorDraft,
+  type EditorProjectIcon,
 } from "@/lib/editor";
-
-export const INITIAL_TEMPLATE = `# 新文章标题
-
-在这里开始写作。支持常见的 Markdown 语法：
-- 列表
-- **加粗**
-- \`行内代码\`
-
-## 一个小节
-
-写下这篇文章真正想表达的核心观点。`;
 
 export type AssetVisualMeta = {
   kind: EditorAssetKind;
@@ -43,6 +35,19 @@ export const CATEGORY_LABELS: Record<EditorCategory, string> = {
   resource: "资源",
 };
 
+export const PROJECT_ICON_LABELS: Record<EditorProjectIcon, string> = {
+  grid: "Grid",
+  spark: "Spark",
+  pen: "Pen",
+  layers: "Layers",
+};
+
+export const ACCENT_LABELS: Record<EditorAccent, string> = {
+  primary: "Primary",
+  secondary: "Secondary",
+  tertiary: "Tertiary",
+};
+
 export const ASSET_VISUALS: Record<EditorAssetKind, AssetVisualMeta> = {
   image: { kind: "image", icon: FileImage, label: "图片" },
   pdf: { kind: "pdf", icon: FileText, label: "PDF" },
@@ -54,10 +59,13 @@ export const ASSET_VISUALS: Record<EditorAssetKind, AssetVisualMeta> = {
 };
 
 export function buildInitialDraft(): EditorDraft {
-  return {
-    ...createEmptyEditorDraft(),
-    content: INITIAL_TEMPLATE,
-  };
+  return applyEditorCategoryChange({
+    draft: {
+      ...createEmptyEditorDraft(),
+      content: "",
+    },
+    nextCategory: "archive",
+  });
 }
 
 export function countWords(input: string) {

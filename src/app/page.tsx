@@ -96,7 +96,7 @@ export default function HomePage() {
           </Reveal>
 
           <Reveal delay={0.18}>
-            <RouteLink href="/projects" transitionKey="home-project-board" className="group block">
+            <RouteLink href="/projects/nebula-core" transitionKey="home-project-board" className="group block">
               <BoardCard className="board-preview-card">
                 <BoardSectionTitle>{homeBoard.projects.title}</BoardSectionTitle>
                 <div className="space-y-3">
@@ -113,7 +113,7 @@ export default function HomePage() {
           </Reveal>
 
           <Reveal delay={0.22}>
-            <RouteLink href="/resources" transitionKey="home-resources" className="block">
+            <RouteLink href="/resources/framer-motion" transitionKey="home-resources" className="block">
               <BoardCard className="board-preview-card">
                 <BoardSectionTitle>{homeBoard.resources.title}</BoardSectionTitle>
                 <div className="board-tag-row">

@@ -1,11 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  applyEditorCategoryChange,
   applyEditorTitleChange,
   createEmptyEditorDraft,
   deriveEditorDraftFromMarkdown,
   formatEditorFileSize,
   isImageEditorFile,
+  isEditorDraftNearEmpty,
   normalizeSlug,
   normalizeTags,
   prepareEditorSubmitPayload,
@@ -40,6 +42,22 @@ test("createEmptyEditorDraft applies provided compose defaults", () => {
       tags: [],
       scheduleAt: null,
       isHidden: true,
+      projectMeta: {
+        href: "",
+        github: "",
+        docs: "",
+        year: "",
+        stack: [],
+        icon: "grid",
+        accent: "primary",
+      },
+      resourceMeta: {
+        url: "",
+        rating: 4,
+        monogram: "",
+        accent: "primary",
+      },
+      archiveMeta: {},
       cover: null,
       assets: [],
     },
@@ -66,6 +84,22 @@ test("prepareEditorSubmitPayload trims fields and normalizes metadata", () => {
     tags: [" #React ", "react", "UI "],
     scheduleAt: "",
     isHidden: true,
+    projectMeta: {
+      href: " https://example.com/project ",
+      github: " https://github.com/example/repo ",
+      docs: " ",
+      year: " 2026 ",
+      stack: [" React  ", "react", " Motion "],
+      icon: "spark",
+      accent: "secondary",
+    },
+    resourceMeta: {
+      url: " https://example.com/resource ",
+      rating: 5,
+      monogram: " fm ",
+      accent: "tertiary",
+    },
+    archiveMeta: {},
     cover: {
       name: "cover.webp",
       type: "image/webp",
@@ -94,6 +128,22 @@ test("prepareEditorSubmitPayload trims fields and normalizes metadata", () => {
     tags: ["React", "UI"],
     scheduleAt: null,
     isHidden: true,
+    projectMeta: {
+      href: "https://example.com/project",
+      github: "https://github.com/example/repo",
+      docs: "",
+      year: "2026",
+      stack: ["React", "Motion"],
+      icon: "spark",
+      accent: "secondary",
+    },
+    resourceMeta: {
+      url: "https://example.com/resource",
+      rating: 5,
+      monogram: "FM",
+      accent: "tertiary",
+    },
+    archiveMeta: {},
     cover: {
       name: "cover.webp",
       type: "image/webp",
@@ -141,6 +191,15 @@ tags:
   - Motion
 category: project
 slug: imported-post
+href: https://example.com/project
+github: https://github.com/example/repo
+docs: https://example.com/project/docs
+year: "2025"
+stack:
+  - React
+  - Motion
+icon: spark
+accent: secondary
 ---
 
 # Ignore this heading
@@ -157,6 +216,22 @@ Body line 1.
     tags: ["React", "Motion"],
     scheduleAt: null,
     isHidden: false,
+    projectMeta: {
+      href: "https://example.com/project",
+      github: "https://github.com/example/repo",
+      docs: "https://example.com/project/docs",
+      year: "2025",
+      stack: ["React", "Motion"],
+      icon: "spark",
+      accent: "secondary",
+    },
+      resourceMeta: {
+        url: "",
+        rating: 4,
+        monogram: "",
+        accent: "primary",
+      },
+    archiveMeta: {},
     cover: null,
     assets: [],
   });
@@ -190,6 +265,22 @@ Body line 1.
     tags: [],
     scheduleAt: null,
     isHidden: false,
+    projectMeta: {
+      href: "",
+      github: "",
+      docs: "",
+      year: "",
+      stack: [],
+      icon: "grid",
+      accent: "primary",
+    },
+    resourceMeta: {
+      url: "",
+      rating: 4,
+      monogram: "",
+      accent: "primary",
+    },
+    archiveMeta: {},
     cover: null,
     assets: [],
   });
@@ -335,4 +426,51 @@ test("applyEditorTitleChange syncs slug only while auto-sync is enabled and unto
       isSlugTouched: true,
     },
   );
+});
+
+test("isEditorDraftNearEmpty identifies whether category switching may replace the template", () => {
+  assert.equal(
+    isEditorDraftNearEmpty({
+      ...createEmptyEditorDraft(),
+      content: "",
+    }),
+    true,
+  );
+
+  assert.equal(
+    isEditorDraftNearEmpty({
+      ...createEmptyEditorDraft(),
+      title: "Working Draft",
+      content: "# Working Draft\n\nReal content lives here.",
+    }),
+    false,
+  );
+});
+
+test("applyEditorCategoryChange updates category template only when the draft is still near empty", () => {
+  const emptyResult = applyEditorCategoryChange({
+    draft: {
+      ...createEmptyEditorDraft(),
+      content: "",
+    },
+    nextCategory: "project",
+  });
+
+  assert.equal(emptyResult.category, "project");
+  assert.match(emptyResult.content, /Website:/);
+  assert.equal(emptyResult.projectMeta.year.length > 0, true);
+
+  const filledResult = applyEditorCategoryChange({
+    draft: {
+      ...createEmptyEditorDraft(),
+      title: "Already Writing",
+      content: "# Custom body\n\nKeep me.",
+      category: "archive",
+    },
+    nextCategory: "resource",
+  });
+
+  assert.equal(filledResult.category, "resource");
+  assert.equal(filledResult.content, "# Custom body\n\nKeep me.");
+  assert.equal(filledResult.resourceMeta.rating, 4);
 });

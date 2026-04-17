@@ -6,10 +6,15 @@ import {
   Eye,
   FileImage,
   FileUp,
+  Globe,
+  Link2,
   LoaderCircle,
   Lock,
+  Palette,
   Send,
   Settings2,
+  Sparkles,
+  Star,
   Tags,
   UploadCloud,
   X,
@@ -21,13 +26,21 @@ import { Reveal } from "@/components/motion/reveal";
 import { GlassPanel, Pill } from "@/components/site/ui";
 import {
   EDITOR_CATEGORIES,
+  type EditorAccent,
   type EditorCategory,
   type EditorDraft,
   type EditorFieldErrors,
   type EditorMode,
+  type EditorProjectIcon,
 } from "@/lib/editor";
 import { cn } from "@/lib/utils";
-import { buildAssetMetaLine, CATEGORY_LABELS, describeAsset } from "./editor-helpers";
+import {
+  ACCENT_LABELS,
+  buildAssetMetaLine,
+  CATEGORY_LABELS,
+  describeAsset,
+  PROJECT_ICON_LABELS,
+} from "./editor-helpers";
 
 type EditorStatus = "idle" | "saving" | "saved" | "error";
 
@@ -51,6 +64,14 @@ type ComposePanelProps = {
   onCategoryChange: (value: EditorCategory) => void;
   onScheduleChange: (value: string | null) => void;
   onHiddenChange: (value: boolean) => void;
+  onProjectMetaChange: <K extends keyof EditorDraft["projectMeta"]>(
+    key: K,
+    value: EditorDraft["projectMeta"][K],
+  ) => void;
+  onResourceMetaChange: <K extends keyof EditorDraft["resourceMeta"]>(
+    key: K,
+    value: EditorDraft["resourceMeta"][K],
+  ) => void;
   onTagInputChange: (value: string) => void;
   onTagAdd: () => void;
   onTagRemove: (tag: string) => void;
@@ -59,6 +80,52 @@ type ComposePanelProps = {
   onClearCover: () => void;
   onRemoveAsset: (assetId: string) => void;
 };
+
+function AccentSelector({
+  value,
+  onChange,
+}: {
+  value: EditorAccent;
+  onChange: (value: EditorAccent) => void;
+}) {
+  return (
+    <div className="editor-category-grid">
+      {(Object.keys(ACCENT_LABELS) as EditorAccent[]).map((accent) => (
+        <button
+          key={accent}
+          type="button"
+          className={cn("editor-category-button", value === accent && "editor-category-button-active")}
+          onClick={() => onChange(accent)}
+        >
+          {ACCENT_LABELS[accent]}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function ProjectIconSelector({
+  value,
+  onChange,
+}: {
+  value: EditorProjectIcon;
+  onChange: (value: EditorProjectIcon) => void;
+}) {
+  return (
+    <div className="editor-category-grid">
+      {(Object.keys(PROJECT_ICON_LABELS) as EditorProjectIcon[]).map((icon) => (
+        <button
+          key={icon}
+          type="button"
+          className={cn("editor-category-button", value === icon && "editor-category-button-active")}
+          onClick={() => onChange(icon)}
+        >
+          {PROJECT_ICON_LABELS[icon]}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 export function EditorComposePanel({
   draft,
@@ -80,6 +147,8 @@ export function EditorComposePanel({
   onCategoryChange,
   onScheduleChange,
   onHiddenChange,
+  onProjectMetaChange,
+  onResourceMetaChange,
   onTagInputChange,
   onTagAdd,
   onTagRemove,
@@ -169,7 +238,7 @@ export function EditorComposePanel({
                   value={draft.content}
                   onChange={(event) => onContentChange(event.target.value)}
                   className="editor-content-input custom-scrollbar"
-                  placeholder="在这里开始创作...（支持 Markdown）"
+                  placeholder="在这里开始创作，支持 Markdown。"
                 />
               ) : (
                 <div className="editor-preview prose-sunset custom-scrollbar">
@@ -255,32 +324,11 @@ export function EditorComposePanel({
                     </div>
                     <div className="editor-cover-empty-copy">
                       <span className="editor-cover-empty-title">上传文章封面</span>
-                      <span className="editor-cover-empty-subtle">仅支持本地图片，选择后会立即预览。</span>
+                      <span className="editor-cover-empty-subtle">仅支持本地图像，选择后会立即预览。</span>
                     </div>
                   </div>
                 )}
               </div>
-
-              {draft.cover ? (
-                <div className="editor-cover-meta">
-                  <div className="editor-cover-meta-copy">
-                    <p className="editor-asset-name">{draft.cover.name}</p>
-                    <p className="editor-asset-subtle">
-                      {draft.cover.type || "未知类型"} / {buildAssetMetaLine(draft.cover)}
-                    </p>
-                  </div>
-                  <div className="editor-cover-meta-actions">
-                    <button type="button" className="editor-text-button" onClick={() => coverInputRef.current?.click()}>
-                      更换
-                    </button>
-                    <button type="button" className="editor-text-button" onClick={onClearCover}>
-                      移除
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <p className="editor-side-caption">封面只在当前编辑会话中保留，本轮不会真实上传到资产目录。</p>
-              )}
             </GlassPanel>
           </Reveal>
 
@@ -320,6 +368,135 @@ export function EditorComposePanel({
               {errors.category ? <p className="editor-field-error">{errors.category}</p> : null}
             </GlassPanel>
           </Reveal>
+
+          {draft.category === "project" ? (
+            <>
+              <Reveal delay={0.13}>
+                <GlassPanel className="editor-side-card">
+                  <div className="editor-side-heading">
+                    <Pill active className="gap-2">
+                      <Link2 className="h-3 w-3" />
+                      项目链接
+                    </Pill>
+                  </div>
+                  <div className="space-y-3">
+                    <input
+                      value={draft.projectMeta.href}
+                      onChange={(event) => onProjectMetaChange("href", event.target.value)}
+                      className="editor-slug-input"
+                      placeholder="Website URL"
+                    />
+                    <input
+                      value={draft.projectMeta.github}
+                      onChange={(event) => onProjectMetaChange("github", event.target.value)}
+                      className="editor-slug-input"
+                      placeholder="GitHub URL"
+                    />
+                    <input
+                      value={draft.projectMeta.docs}
+                      onChange={(event) => onProjectMetaChange("docs", event.target.value)}
+                      className="editor-slug-input"
+                      placeholder="Docs URL"
+                    />
+                  </div>
+                </GlassPanel>
+              </Reveal>
+
+              <Reveal delay={0.135}>
+                <GlassPanel className="editor-side-card">
+                  <div className="editor-side-heading">
+                    <Pill active className="gap-2">
+                      <Globe className="h-3 w-3" />
+                      项目配置
+                    </Pill>
+                  </div>
+                  <div className="space-y-3">
+                    <input
+                      value={draft.projectMeta.year}
+                      onChange={(event) => onProjectMetaChange("year", event.target.value)}
+                      className="editor-slug-input"
+                      placeholder="年份，例如 2026"
+                    />
+                    <input
+                      value={draft.projectMeta.stack.join(", ")}
+                      onChange={(event) =>
+                        onProjectMetaChange(
+                          "stack",
+                          event.target.value
+                            .split(",")
+                            .map((entry) => entry.trim())
+                            .filter(Boolean),
+                        )
+                      }
+                      className="editor-slug-input"
+                      placeholder="技术栈，使用逗号分隔"
+                    />
+                    <ProjectIconSelector
+                      value={draft.projectMeta.icon}
+                      onChange={(value) => onProjectMetaChange("icon", value)}
+                    />
+                    <AccentSelector
+                      value={draft.projectMeta.accent}
+                      onChange={(value) => onProjectMetaChange("accent", value)}
+                    />
+                  </div>
+                </GlassPanel>
+              </Reveal>
+            </>
+          ) : null}
+
+          {draft.category === "resource" ? (
+            <>
+              <Reveal delay={0.13}>
+                <GlassPanel className="editor-side-card">
+                  <div className="editor-side-heading">
+                    <Pill active className="gap-2">
+                      <Link2 className="h-3 w-3" />
+                      资源链接
+                    </Pill>
+                  </div>
+                  <input
+                    value={draft.resourceMeta.url}
+                    onChange={(event) => onResourceMetaChange("url", event.target.value)}
+                    className="editor-slug-input"
+                    placeholder="原始资源 URL"
+                  />
+                </GlassPanel>
+              </Reveal>
+
+              <Reveal delay={0.135}>
+                <GlassPanel className="editor-side-card">
+                  <div className="editor-side-heading">
+                    <Pill active className="gap-2">
+                      <Star className="h-3 w-3" />
+                      资源配置
+                    </Pill>
+                  </div>
+                  <div className="space-y-3">
+                    <input
+                      type="number"
+                      min={1}
+                      max={5}
+                      value={draft.resourceMeta.rating}
+                      onChange={(event) => onResourceMetaChange("rating", Number(event.target.value || 4))}
+                      className="editor-slug-input"
+                      placeholder="评分 1-5"
+                    />
+                    <input
+                      value={draft.resourceMeta.monogram}
+                      onChange={(event) => onResourceMetaChange("monogram", event.target.value)}
+                      className="editor-slug-input"
+                      placeholder="Monogram，例如 FM"
+                    />
+                    <AccentSelector
+                      value={draft.resourceMeta.accent}
+                      onChange={(value) => onResourceMetaChange("accent", value)}
+                    />
+                  </div>
+                </GlassPanel>
+              </Reveal>
+            </>
+          ) : null}
 
           <Reveal delay={0.14}>
             <GlassPanel className="editor-side-card">
@@ -397,7 +574,10 @@ export function EditorComposePanel({
           <Reveal delay={0.18}>
             <GlassPanel className="editor-side-card">
               <div className="editor-side-heading">
-                <Pill active>文章资源</Pill>
+                <Pill active className="gap-2">
+                  <Sparkles className="h-3 w-3" />
+                  文章资源
+                </Pill>
                 <span className="editor-side-caption">{assetSummaryLabel}</span>
               </div>
 

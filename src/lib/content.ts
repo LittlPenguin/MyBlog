@@ -83,10 +83,10 @@ function createResourceFrontmatter(
 ): ResourceContentFrontmatter {
   return {
     ...base,
-    url: `/resources/${payload.slug}`,
-    rating: 4,
-    accent: "primary",
-    monogram: createMonogram(payload.title),
+    url: payload.resourceMeta.url || `/resources/${payload.slug}`,
+    rating: payload.resourceMeta.rating,
+    accent: payload.resourceMeta.accent,
+    monogram: payload.resourceMeta.monogram || createMonogram(payload.title),
   };
 }
 
@@ -97,13 +97,13 @@ function createProjectFrontmatter(
 ): ProjectContentFrontmatter {
   return {
     ...base,
-    year: resolvePublishDate(payload.scheduleAt, now).slice(0, 4),
-    stack: payload.tags.length > 0 ? payload.tags : ["Notes"],
-    href: undefined,
-    github: undefined,
-    docs: undefined,
-    icon: "grid",
-    accent: "primary",
+    year: payload.projectMeta.year || resolvePublishDate(payload.scheduleAt, now).slice(0, 4),
+    stack: payload.projectMeta.stack.length > 0 ? payload.projectMeta.stack : payload.tags.length > 0 ? payload.tags : ["Notes"],
+    href: payload.projectMeta.href || undefined,
+    github: payload.projectMeta.github || undefined,
+    docs: payload.projectMeta.docs || undefined,
+    icon: payload.projectMeta.icon,
+    accent: payload.projectMeta.accent,
   };
 }
 
@@ -400,6 +400,41 @@ export function createPersistedEditorDraft({
       tags: frontmatter.tags,
       scheduleAt: inferDraftScheduleAt(frontmatter.date),
       isHidden: Boolean(frontmatter.hidden || frontmatter.draft),
+      projectMeta: {
+        href: "href" in frontmatter && typeof frontmatter.href === "string" ? frontmatter.href : "",
+        github: "github" in frontmatter && typeof frontmatter.github === "string" ? frontmatter.github : "",
+        docs: "docs" in frontmatter && typeof frontmatter.docs === "string" ? frontmatter.docs : "",
+        year: "year" in frontmatter && typeof frontmatter.year === "string" ? frontmatter.year : "",
+        stack: "stack" in frontmatter && Array.isArray(frontmatter.stack) ? frontmatter.stack : [],
+        icon:
+          "icon" in frontmatter &&
+          (frontmatter.icon === "grid" ||
+            frontmatter.icon === "spark" ||
+            frontmatter.icon === "pen" ||
+            frontmatter.icon === "layers")
+            ? frontmatter.icon
+            : "grid",
+        accent:
+          "accent" in frontmatter &&
+          (frontmatter.accent === "primary" ||
+            frontmatter.accent === "secondary" ||
+            frontmatter.accent === "tertiary")
+            ? frontmatter.accent
+            : "primary",
+      },
+      resourceMeta: {
+        url: "url" in frontmatter && typeof frontmatter.url === "string" ? frontmatter.url : "",
+        rating: "rating" in frontmatter && typeof frontmatter.rating === "number" ? frontmatter.rating : 4,
+        monogram: "monogram" in frontmatter && typeof frontmatter.monogram === "string" ? frontmatter.monogram : "",
+        accent:
+          "accent" in frontmatter &&
+          (frontmatter.accent === "primary" ||
+            frontmatter.accent === "secondary" ||
+            frontmatter.accent === "tertiary")
+            ? frontmatter.accent
+            : "primary",
+      },
+      archiveMeta: {},
       cover: frontmatter.cover
         ? buildCoverAssetReference(path.basename(frontmatter.cover), frontmatter.cover, frontmatter.cover)
         : null,

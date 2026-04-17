@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  applyEditorCategoryChange,
   applyEditorTitleChange,
   buildAttachmentAsset,
   buildCoverAsset,
@@ -142,6 +143,34 @@ export function EditorClient() {
       }
       return next;
     });
+    setStatus("idle");
+  }
+
+  function updateProjectMeta<K extends keyof EditorDraft["projectMeta"]>(
+    key: K,
+    value: EditorDraft["projectMeta"][K],
+  ) {
+    setDraft((current) => ({
+      ...current,
+      projectMeta: {
+        ...current.projectMeta,
+        [key]: value,
+      },
+    }));
+    setStatus("idle");
+  }
+
+  function updateResourceMeta<K extends keyof EditorDraft["resourceMeta"]>(
+    key: K,
+    value: EditorDraft["resourceMeta"][K],
+  ) {
+    setDraft((current) => ({
+      ...current,
+      resourceMeta: {
+        ...current.resourceMeta,
+        [key]: value,
+      },
+    }));
     setStatus("idle");
   }
 
@@ -408,9 +437,13 @@ export function EditorClient() {
           onSlugChange={handleSlugChange}
           onSummaryChange={(value) => updateDraft("summary", value)}
           onContentChange={(value) => updateDraft("content", value)}
-          onCategoryChange={(value) => updateDraft("category", value)}
+          onCategoryChange={(value) =>
+            setDraft((current) => applyEditorCategoryChange({ draft: current, nextCategory: value }))
+          }
           onScheduleChange={(value) => updateDraft("scheduleAt", value)}
           onHiddenChange={(value) => updateDraft("isHidden", value)}
+          onProjectMetaChange={updateProjectMeta}
+          onResourceMetaChange={updateResourceMeta}
           onTagInputChange={setTagInput}
           onTagAdd={() => addTag(tagInput)}
           onTagRemove={removeTag}

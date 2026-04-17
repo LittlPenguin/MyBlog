@@ -62,79 +62,70 @@ export default async function ProjectsPage() {
 
           return (
             <Reveal key={project.slug} delay={0.05 * (index + 1)}>
-              <GlassPanel className="group flex h-full flex-col justify-between p-6 transition hover:-translate-y-1">
-                <div className="space-y-5">
-                  <div className="flex items-start justify-between gap-4">
-                    {project.cover ? (
-                      <div className="h-24 w-36 overflow-hidden rounded-[24px] border border-white/60 bg-white/70 shadow-[var(--shadow-near)]">
-                        <Image
-                          src={project.cover}
-                          alt={project.title}
-                          width={720}
-                          height={480}
-                          className="h-full w-full object-cover"
-                          sizes="288px"
-                        />
-                      </div>
-                    ) : (
-                      <div
-                        className={`inline-flex h-12 w-12 items-center justify-center rounded-[18px] ${accentClasses(project.accent)}`}
-                      >
-                        <Icon className="h-5 w-5" />
-                      </div>
-                    )}
-                    <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                      {project.year}
-                    </span>
-                  </div>
+              <RouteLink
+                href={`/projects/${project.slug}`}
+                transitionKey={`project-${project.slug}`}
+                className="block h-full"
+              >
+                <GlassPanel className="group flex h-full flex-col justify-between p-6 transition hover:-translate-y-1">
+                  <div className="space-y-5">
+                    <div className="flex items-start justify-between gap-4">
+                      {project.cover ? (
+                        <div className="h-24 w-36 overflow-hidden rounded-[24px] border border-white/60 bg-white/70 shadow-[var(--shadow-near)]">
+                          <Image
+                            src={project.cover}
+                            alt={project.title}
+                            width={720}
+                            height={480}
+                            className="h-full w-full object-cover"
+                            sizes="288px"
+                          />
+                        </div>
+                      ) : (
+                        <div
+                          className={`inline-flex h-12 w-12 items-center justify-center rounded-[18px] ${accentClasses(project.accent)}`}
+                        >
+                          <Icon className="h-5 w-5" />
+                        </div>
+                      )}
+                      <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                        {project.year}
+                      </span>
+                    </div>
 
-                  <div>
-                    <RouteLink
-                      href={`/projects/${project.slug}`}
-                      transitionKey={`project-${project.slug}`}
-                      className="block"
-                    >
+                    <div>
                       <h2 className="font-heading text-2xl font-black tracking-[-0.05em] text-foreground transition group-hover:text-primary">
                         {project.title}
                       </h2>
-                    </RouteLink>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {project.stack.map((item) => (
-                        <Pill key={item}>{item}</Pill>
-                      ))}
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {project.stack.map((item) => (
+                          <Pill key={item}>{item}</Pill>
+                        ))}
+                      </div>
+                      <p className="mt-4 text-sm leading-7 text-muted-foreground">{project.summary}</p>
                     </div>
-                    <p className="mt-4 text-sm leading-7 text-muted-foreground">{project.summary}</p>
                   </div>
-                </div>
 
-                <div className="mt-6 flex flex-wrap gap-3">
-                  {project.href ? (
-                    <a
-                      href={project.href}
-                      className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-primary to-primary-strong px-4 py-2 text-sm font-semibold text-white shadow-[0_16px_32px_rgba(172,42,31,0.18)]"
-                    >
-                      Website
-                      <ArrowUpRight className="h-4 w-4" />
-                    </a>
-                  ) : null}
-                  {project.github ? (
-                    <a
-                      href={project.github}
-                      className="inline-flex items-center gap-2 rounded-full border border-white/60 bg-white/56 px-4 py-2 text-sm font-semibold text-foreground"
-                    >
-                      GitHub
-                    </a>
-                  ) : null}
-                  {project.docs ? (
-                    <a
-                      href={project.docs}
-                      className="inline-flex items-center gap-2 rounded-full border border-white/60 bg-white/56 px-4 py-2 text-sm font-semibold text-foreground"
-                    >
-                      Docs
-                    </a>
-                  ) : null}
-                </div>
-              </GlassPanel>
+                  <div className="mt-6 flex flex-wrap gap-3">
+                    {project.href ? (
+                      <span className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-primary to-primary-strong px-4 py-2 text-sm font-semibold text-white shadow-[0_16px_32px_rgba(172,42,31,0.18)]">
+                        Website
+                        <ArrowUpRight className="h-4 w-4" />
+                      </span>
+                    ) : null}
+                    {project.github ? (
+                      <span className="inline-flex items-center gap-2 rounded-full border border-white/60 bg-white/56 px-4 py-2 text-sm font-semibold text-foreground">
+                        GitHub
+                      </span>
+                    ) : null}
+                    {project.docs ? (
+                      <span className="inline-flex items-center gap-2 rounded-full border border-white/60 bg-white/56 px-4 py-2 text-sm font-semibold text-foreground">
+                        Docs
+                      </span>
+                    ) : null}
+                  </div>
+                </GlassPanel>
+              </RouteLink>
             </Reveal>
           );
         })}

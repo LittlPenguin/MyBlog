@@ -37,6 +37,22 @@ test("createBaseContentFrontmatter maps editor draft into persisted metadata", (
       tags: ["quiet", "writing"],
       scheduleAt: "2026-04-10T08:30",
       isHidden: true,
+      projectMeta: {
+        href: "",
+        github: "",
+        docs: "",
+        year: "",
+        stack: [],
+        icon: "grid",
+        accent: "primary",
+      },
+      resourceMeta: {
+        url: "",
+        rating: 4,
+        monogram: "",
+        accent: "primary",
+      },
+      archiveMeta: {},
       cover: {
         name: "cover.webp",
         type: "image/webp",
@@ -83,6 +99,22 @@ test("createBaseContentFrontmatter adds resource defaults needed by public resou
       tags: ["Reference", "UI"],
       scheduleAt: null,
       isHidden: false,
+      projectMeta: {
+        href: "",
+        github: "",
+        docs: "",
+        year: "",
+        stack: [],
+        icon: "grid",
+        accent: "secondary",
+      },
+      resourceMeta: {
+        url: "https://example.com/resource-draft",
+        rating: 5,
+        monogram: "RS",
+        accent: "secondary",
+      },
+      archiveMeta: {},
       cover: null,
       assets: [],
     }),
@@ -103,10 +135,10 @@ test("createBaseContentFrontmatter adds resource defaults needed by public resou
     hidden: false,
     assetNames: [],
     assetPaths: [],
-    url: "/resources/resource-draft",
-    rating: 4,
-    accent: "primary",
-    monogram: "RD",
+    url: "https://example.com/resource-draft",
+    rating: 5,
+    accent: "secondary",
+    monogram: "RS",
   });
 });
 
@@ -121,6 +153,22 @@ test("createBaseContentFrontmatter adds project defaults needed by public projec
       tags: ["Next.js", "MDX"],
       scheduleAt: null,
       isHidden: false,
+      projectMeta: {
+        href: "https://example.com/project-draft",
+        github: "https://github.com/example/project-draft",
+        docs: "https://example.com/project-draft/docs",
+        year: "2025",
+        stack: ["React", "MDX"],
+        icon: "spark",
+        accent: "tertiary",
+      },
+      resourceMeta: {
+        url: "",
+        rating: 4,
+        monogram: "",
+        accent: "primary",
+      },
+      archiveMeta: {},
       cover: null,
       assets: [],
     }),
@@ -141,13 +189,13 @@ test("createBaseContentFrontmatter adds project defaults needed by public projec
     hidden: false,
     assetNames: [],
     assetPaths: [],
-    year: "2026",
-    stack: ["Next.js", "MDX"],
-    href: undefined,
-    github: undefined,
-    docs: undefined,
-    icon: "grid",
-    accent: "primary",
+    year: "2025",
+    stack: ["React", "MDX"],
+    href: "https://example.com/project-draft",
+    github: "https://github.com/example/project-draft",
+    docs: "https://example.com/project-draft/docs",
+    icon: "spark",
+    accent: "tertiary",
   });
 });
 
@@ -205,6 +253,22 @@ test("buildEditorWriteResult returns path metadata and persisted compose payload
     tags: ["Reference"],
     scheduleAt: null,
     isHidden: false,
+    projectMeta: {
+      href: "",
+      github: "",
+      docs: "",
+      year: "",
+      stack: [],
+      icon: "grid",
+      accent: "secondary",
+    },
+    resourceMeta: {
+      url: "https://example.com/resource",
+      rating: 5,
+      monogram: "NR",
+      accent: "secondary",
+    },
+    archiveMeta: {},
     cover: null,
     assets: [],
   });
@@ -268,6 +332,44 @@ Body copy.
   assert.match(item.content, /# Quiet Library/);
 });
 
+test("parseContentCollectionItem preserves legacy content even when assetNames is omitted", async () => {
+  const tmpRoot = await mkdtemp(path.join(os.tmpdir(), "myblog-content-"));
+  const sourceDir = path.join(tmpRoot, "projects");
+  await mkdir(sourceDir, { recursive: true });
+  const filePath = path.join(sourceDir, "legacy-project.mdx");
+  await writeFile(
+    filePath,
+    `---
+title: "Legacy Project"
+slug: "legacy-project"
+summary: "Collected references"
+date: "2026-04-09"
+category: "椤圭洰"
+tags:
+  - Reading
+featured: false
+draft: false
+hidden: false
+year: "2026"
+stack:
+  - Reading
+icon: "grid"
+accent: "primary"
+---
+
+# Legacy Project
+
+Body copy.
+`,
+    "utf8",
+  );
+
+  const item = await parseContentCollectionItem(filePath);
+
+  assert.equal(item.meta.slug, "legacy-project");
+  assert.equal(item.meta.assetNames, undefined);
+});
+
 test("createPersistedEditorDraft maps persisted file metadata back to compose state", () => {
   const result = createPersistedEditorDraft({
     category: "project",
@@ -304,6 +406,22 @@ test("createPersistedEditorDraft maps persisted file metadata back to compose st
       tags: ["Motion", "UI"],
       scheduleAt: "2026-04-12T00:00",
       isHidden: true,
+      projectMeta: {
+        href: "",
+        github: "",
+        docs: "",
+        year: "2026",
+        stack: ["Motion", "UI"],
+        icon: "grid",
+        accent: "primary",
+      },
+      resourceMeta: {
+        url: "",
+        rating: 4,
+        monogram: "",
+        accent: "primary",
+      },
+      archiveMeta: {},
       cover: {
         name: "cover.webp",
         type: "",
@@ -326,6 +444,46 @@ test("createPersistedEditorDraft maps persisted file metadata back to compose st
       originalCategory: "project",
       originalSlug: "studio-notes",
     },
+  });
+});
+
+test("createPersistedEditorDraft restores project and resource meta fields from persisted frontmatter", () => {
+  const projectResult = createPersistedEditorDraft({
+    category: "project",
+    slug: "aether-ui",
+    frontmatter: {
+      title: "Aether UI",
+      slug: "aether-ui",
+      summary: "Design system",
+      description: "Design system",
+      date: "2026-04-12",
+      category: "项目",
+      tags: ["React"],
+      cover: undefined,
+      featured: false,
+      draft: false,
+      hidden: false,
+      assetNames: [],
+      assetPaths: [],
+      year: "2025",
+      stack: ["React", "Motion"],
+      href: "https://example.com/aether-ui",
+      github: "https://github.com/example/aether-ui",
+      docs: "https://example.com/aether-ui/docs",
+      icon: "spark",
+      accent: "tertiary",
+    },
+    content: "# Aether UI",
+  });
+
+  assert.deepEqual(projectResult.draft.projectMeta, {
+    href: "https://example.com/aether-ui",
+    github: "https://github.com/example/aether-ui",
+    docs: "https://example.com/aether-ui/docs",
+    year: "2025",
+    stack: ["React", "Motion"],
+    icon: "spark",
+    accent: "tertiary",
   });
 });
 
@@ -371,6 +529,22 @@ First version.
       tags: ["Notes", "Update"],
       scheduleAt: null,
       isHidden: true,
+      projectMeta: {
+        href: "",
+        github: "",
+        docs: "",
+        year: "",
+        stack: [],
+        icon: "grid",
+        accent: "primary",
+      },
+      resourceMeta: {
+        url: "",
+        rating: 4,
+        monogram: "",
+        accent: "primary",
+      },
+      archiveMeta: {},
       cover: null,
       assets: [],
       source: {
@@ -430,6 +604,22 @@ assetNames: []
       tags: ["Library"],
       scheduleAt: null,
       isHidden: false,
+      projectMeta: {
+        href: "",
+        github: "",
+        docs: "",
+        year: "",
+        stack: [],
+        icon: "grid",
+        accent: "primary",
+      },
+      resourceMeta: {
+        url: "https://example.com/resource-draft",
+        rating: 4,
+        monogram: "RD",
+        accent: "primary",
+      },
+      archiveMeta: {},
       cover: null,
       assets: [],
       source: {
@@ -470,6 +660,22 @@ test("updateEditorContentFile persists cover and assets into public uploads and 
       tags: ["Assets"],
       scheduleAt: null,
       isHidden: false,
+      projectMeta: {
+        href: "",
+        github: "",
+        docs: "",
+        year: "",
+        stack: [],
+        icon: "grid",
+        accent: "primary",
+      },
+      resourceMeta: {
+        url: "https://example.com/assets",
+        rating: 5,
+        monogram: "AR",
+        accent: "tertiary",
+      },
+      archiveMeta: {},
       cover: {
         name: "cover.webp",
         type: "image/webp",
@@ -574,6 +780,22 @@ test("buildContentFileSource produces a serializable write payload", async () =>
     tags: ["devlog"],
     scheduleAt: null,
     isHidden: false,
+    projectMeta: {
+      href: "https://example.com/project-log",
+      github: "https://github.com/example/project-log",
+      docs: "https://example.com/project-log/docs",
+      year: "2026",
+      stack: ["Devlog"],
+      icon: "spark",
+      accent: "secondary",
+    },
+    resourceMeta: {
+      url: "",
+      rating: 4,
+      monogram: "",
+      accent: "primary",
+    },
+    archiveMeta: {},
     cover: null,
     assets: [],
   });

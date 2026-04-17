@@ -1,6 +1,8 @@
 import matter from "gray-matter";
 export { EDITOR_CATEGORIES } from "./editor-shared.js";
 export type {
+  EditorAccent,
+  EditorArchiveMeta,
   EditorAttachmentAsset,
   EditorDraftSource,
   EditorCategory,
@@ -9,9 +11,14 @@ export type {
   EditorFieldErrors,
   EditorFileAsset,
   EditorMode,
+  EditorProjectIcon,
+  EditorProjectMeta,
+  EditorResourceMeta,
 } from "./editor-shared.js";
 import { EDITOR_CATEGORIES } from "./editor-shared.js";
 import type {
+  EditorAccent,
+  EditorArchiveMeta,
   EditorAttachmentAsset,
   EditorDraftSource,
   EditorCategory,
@@ -19,6 +26,9 @@ import type {
   EditorDraft,
   EditorFieldErrors,
   EditorMode,
+  EditorProjectIcon,
+  EditorProjectMeta,
+  EditorResourceMeta,
 } from "./editor-shared.js";
 
 export type EditorAssetKind =
@@ -48,6 +58,11 @@ type ApplyEditorTitleChangeInput = {
 type ApplyEditorTitleChangeResult = {
   draft: EditorDraft;
   isSlugTouched: boolean;
+};
+
+type ApplyEditorCategoryChangeInput = {
+  draft: EditorDraft;
+  nextCategory: EditorCategory;
 };
 
 function isEditorCategory(value: unknown): value is EditorCategory {
@@ -104,6 +119,31 @@ function getFileExtension(name: string) {
   return segments.length > 1 ? segments.at(-1) ?? "" : "";
 }
 
+export function createEmptyProjectMeta(): EditorProjectMeta {
+  return {
+    href: "",
+    github: "",
+    docs: "",
+    year: "",
+    stack: [],
+    icon: "grid",
+    accent: "primary",
+  };
+}
+
+export function createEmptyResourceMeta(): EditorResourceMeta {
+  return {
+    url: "",
+    rating: 4,
+    monogram: "",
+    accent: "primary",
+  };
+}
+
+export function createEmptyArchiveMeta(): EditorArchiveMeta {
+  return {};
+}
+
 export function createEmptyEditorDraft(
   partial: Partial<Pick<EditorDraft, "category" | "isHidden">> = {},
 ): EditorDraft {
@@ -116,8 +156,139 @@ export function createEmptyEditorDraft(
     tags: [],
     scheduleAt: null,
     isHidden: partial.isHidden ?? false,
+    projectMeta: createEmptyProjectMeta(),
+    resourceMeta: createEmptyResourceMeta(),
+    archiveMeta: createEmptyArchiveMeta(),
     cover: null,
     assets: [],
+  };
+}
+
+function trimOrEmpty(value: string | null | undefined) {
+  return value?.trim() ?? "";
+}
+
+function normalizeMonogram(value: string) {
+  return value.trim().toUpperCase();
+}
+
+function normalizeRating(value: number) {
+  if (!Number.isFinite(value)) {
+    return 4;
+  }
+
+  return Math.max(1, Math.min(5, Math.round(value)));
+}
+
+function createCategoryTemplate(category: EditorCategory) {
+  if (category === "project") {
+    return `# 项目名称
+一句话说明这个项目解决了什么问题。
+
+## 项目链接
+- Website:
+- GitHub:
+- Docs:
+
+## 项目概览
+- 目标
+- 使用场景
+- 当前状态
+
+## 关键能力
+- 能力一
+- 能力二
+- 能力三
+
+## 设计与实现
+补充架构、交互、技术栈和实现取舍。`;
+  }
+
+  if (category === "resource") {
+    return `# 资源名称
+一句话说明这个资源适合什么场景。
+
+## 资源信息
+- 原始链接:
+- 推荐评分:
+
+## 资源简介
+- 它是什么
+- 适合谁
+- 为什么值得收藏
+
+## 使用建议
+写下你的使用体验、亮点和注意事项。`;
+  }
+
+  return `# 新文章标题
+在这里开始写作。支持常见的 Markdown 语法：
+- 列表
+- **加粗**
+- \`行内代码\`
+
+## 一个小节
+写下这篇文章真正想表达的核心观点。`;
+}
+
+export function isEditorDraftNearEmpty(draft: Pick<EditorDraft, "title" | "summary" | "content" | "tags" | "assets" | "cover">) {
+  const title = draft.title.trim();
+  const summary = draft.summary.trim();
+  const content = draft.content.trim();
+
+  if (title || summary) {
+    return false;
+  }
+
+  if ((draft.tags?.length ?? 0) > 0 || (draft.assets?.length ?? 0) > 0 || draft.cover) {
+    return false;
+  }
+
+  return content.length < 16;
+}
+
+function initializeCategoryMeta(draft: EditorDraft, nextCategory: EditorCategory): EditorDraft {
+  if (nextCategory === "project") {
+    const nextYear = trimOrEmpty(draft.projectMeta.year) || new Date().getFullYear().toString();
+    return {
+      ...draft,
+      projectMeta: {
+        ...draft.projectMeta,
+        year: nextYear,
+        stack: draft.projectMeta.stack.length > 0 ? draft.projectMeta.stack : normalizeTags(draft.tags),
+      },
+    };
+  }
+
+  if (nextCategory === "resource") {
+    return {
+      ...draft,
+      resourceMeta: {
+        ...draft.resourceMeta,
+        monogram: draft.resourceMeta.monogram || draft.title.trim().slice(0, 2).toUpperCase(),
+      },
+    };
+  }
+
+  return draft;
+}
+
+export function applyEditorCategoryChange({ draft, nextCategory }: ApplyEditorCategoryChangeInput): EditorDraft {
+  const nextDraft = initializeCategoryMeta(
+    {
+      ...draft,
+      category: nextCategory,
+    },
+    nextCategory,
+  );
+
+  if (!isEditorDraftNearEmpty(draft)) {
+    return nextDraft;
+  }
+
+  return {
+    ...nextDraft,
+    content: createCategoryTemplate(nextCategory),
   };
 }
 
@@ -303,6 +474,22 @@ export function prepareEditorSubmitPayload(draft: EditorDraft): EditorSubmitPayl
     content: draft.content.replace(/\r\n/g, "\n"),
     tags: normalizeTags(draft.tags),
     scheduleAt: normalizeScheduleAt(draft.scheduleAt),
+    projectMeta: {
+      href: trimOrEmpty(draft.projectMeta.href),
+      github: trimOrEmpty(draft.projectMeta.github),
+      docs: trimOrEmpty(draft.projectMeta.docs),
+      year: trimOrEmpty(draft.projectMeta.year),
+      stack: normalizeTags(draft.projectMeta.stack),
+      icon: draft.projectMeta.icon,
+      accent: draft.projectMeta.accent,
+    },
+    resourceMeta: {
+      url: trimOrEmpty(draft.resourceMeta.url),
+      rating: normalizeRating(draft.resourceMeta.rating),
+      monogram: normalizeMonogram(draft.resourceMeta.monogram),
+      accent: draft.resourceMeta.accent,
+    },
+    archiveMeta: draft.archiveMeta,
     cover: draft.cover
       ? {
           name: draft.cover.name,
@@ -358,6 +545,42 @@ export function deriveEditorDraftFromMarkdown(source: string, options: DeriveEdi
       ? normalizeSlug(data.slug)
       : normalizeSlug(inferredTitle);
 
+  const projectMeta = createEmptyProjectMeta();
+  const resourceMeta = createEmptyResourceMeta();
+
+  if (preferFrontmatter) {
+    if (typeof data.href === "string") {
+      projectMeta.href = data.href.trim();
+    }
+    if (typeof data.github === "string") {
+      projectMeta.github = data.github.trim();
+    }
+    if (typeof data.docs === "string") {
+      projectMeta.docs = data.docs.trim();
+    }
+    if (typeof data.year === "string") {
+      projectMeta.year = data.year.trim();
+    }
+    if (Array.isArray(data.stack)) {
+      projectMeta.stack = normalizeTags(data.stack.filter((tag): tag is string => typeof tag === "string"));
+    }
+    if (data.icon === "grid" || data.icon === "spark" || data.icon === "pen" || data.icon === "layers") {
+      projectMeta.icon = data.icon as EditorProjectIcon;
+    }
+    if (data.accent === "primary" || data.accent === "secondary" || data.accent === "tertiary") {
+      projectMeta.accent = data.accent as EditorAccent;
+    }
+    if (typeof data.url === "string") {
+      resourceMeta.url = data.url.trim();
+    }
+    if (typeof data.rating === "number") {
+      resourceMeta.rating = normalizeRating(data.rating);
+    }
+    if (typeof data.monogram === "string") {
+      resourceMeta.monogram = normalizeMonogram(data.monogram);
+    }
+  }
+
   return {
     ...createEmptyEditorDraft(),
     title: inferredTitle,
@@ -366,6 +589,8 @@ export function deriveEditorDraftFromMarkdown(source: string, options: DeriveEdi
     content,
     category,
     tags,
+    projectMeta,
+    resourceMeta,
   };
 }
 

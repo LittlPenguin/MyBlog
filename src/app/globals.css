@@ -961,18 +961,6 @@ img {
   box-shadow: 0 24px 48px rgba(46, 47, 45, 0.08);
 }
 
-.resource-detail-grid {
-  display: grid;
-  gap: 1.5rem;
-  grid-template-columns: minmax(0, 1.16fr) minmax(320px, 0.84fr);
-}
-
-.resource-detail-hero {
-  display: grid;
-  align-content: space-between;
-  min-height: 32rem;
-}
-
 .resource-detail-chip {
   display: inline-flex;
   width: fit-content;
@@ -1001,18 +989,42 @@ img {
   gap: 1.5rem;
 }
 
-.resource-detail-meta {
-  display: grid;
-  gap: 1rem;
+.resource-related-card:hover {
+  transform: translateX(4px);
 }
 
-.resource-detail-side {
+.detail-hero-panel {
   display: grid;
   gap: 1.5rem;
 }
 
-.resource-related-card:hover {
-  transform: translateX(4px);
+.detail-hero-copy {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.detail-summary p {
+  margin: 0;
+}
+
+.detail-meta-row,
+.detail-actions-row,
+.detail-related-wrap {
+  display: grid;
+  gap: 1rem;
+}
+
+.detail-cover-wrap {
+  max-width: 100%;
+}
+
+.detail-body-panel {
+  display: block;
+}
+
+.detail-body-flow {
+  margin-inline: auto;
+  width: min(100%, 54rem);
 }
 
 .about-hero-grid {

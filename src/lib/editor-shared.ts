@@ -22,6 +22,29 @@ export type EditorDraftSource = {
   originalSlug: string;
 };
 
+export type EditorAccent = "primary" | "secondary" | "tertiary";
+
+export type EditorProjectIcon = "grid" | "spark" | "pen" | "layers";
+
+export type EditorProjectMeta = {
+  href: string;
+  github: string;
+  docs: string;
+  year: string;
+  stack: string[];
+  icon: EditorProjectIcon;
+  accent: EditorAccent;
+};
+
+export type EditorResourceMeta = {
+  url: string;
+  rating: number;
+  monogram: string;
+  accent: EditorAccent;
+};
+
+export type EditorArchiveMeta = Record<string, never>;
+
 export type EditorDraft = {
   title: string;
   slug: string;
@@ -31,6 +54,9 @@ export type EditorDraft = {
   tags: string[];
   scheduleAt: string | null;
   isHidden: boolean;
+  projectMeta: EditorProjectMeta;
+  resourceMeta: EditorResourceMeta;
+  archiveMeta: EditorArchiveMeta;
   cover: EditorCoverAsset | null;
   assets: EditorAttachmentAsset[];
 };
