@@ -3,6 +3,7 @@
 import Link, { type LinkProps } from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { startTransition, useEffectEvent } from "react";
+import { normalizeRoutePathname } from "@/lib/route-path";
 import { cn } from "@/lib/utils";
 import { usePageTransition } from "./transition-context";
 import {
@@ -34,6 +35,7 @@ export function RouteLink({
   const pathname = usePathname();
   const router = useRouter();
   const { beginTransition, isCurrentTransition, cancelTransition } = usePageTransition();
+  const normalizedCurrentPathname = normalizeRoutePathname(pathname);
   const hrefValue =
     typeof href === "string"
       ? href
@@ -77,7 +79,7 @@ export function RouteLink({
       return;
     }
 
-    if (hrefValue === pathname) {
+    if (normalizeRoutePathname(hrefValue) === normalizedCurrentPathname) {
       event.preventDefault();
       return;
     }
@@ -97,7 +99,7 @@ export function RouteLink({
 
     const transitionId = beginTransition({
       href: hrefValue,
-      fromPathname: pathname,
+      fromPathname: normalizedCurrentPathname,
       toPathname,
       key: transitionKey ?? hrefValue,
       replace: replace ?? false,

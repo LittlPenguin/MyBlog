@@ -1,6 +1,6 @@
 import path from "node:path";
 import matter from "gray-matter";
-import fs from "node:fs/promises";
+import { findContentFileBySlug, normalizeContentSlug } from "./content-slug.js";
 import { readCollectionItems } from "./content.js";
 import {
   ALL_RESOURCES_CATEGORY,
@@ -32,6 +32,7 @@ function normalizeResourceItem(resource: Partial<ResourceItem> & Pick<ResourceIt
     rating: resource.rating ?? 4,
     accent: resource.accent ?? "primary",
     monogram: resource.monogram ?? createResourceMonogram(resource.title),
+    assetNames: resource.assetNames ?? [],
     assetPaths: resource.assetPaths ?? [],
   };
 }
@@ -52,18 +53,17 @@ export async function getResourceSlugs() {
 
 export async function getResourceBySlug(slug: string) {
   const resources = await getAllResources();
-  return resources.find((resource) => resource.slug === slug) ?? null;
+  const normalizedSlug = normalizeContentSlug(slug);
+  return resources.find((resource) => resource.slug === normalizedSlug) ?? null;
 }
 
 export async function getResourceDetailBySlug(slug: string) {
-  const filePath = path.join(RESOURCES_DIR, `${slug}.mdx`);
-  const source = await fs.readFile(filePath, "utf8").catch(() => null);
-
-  if (!source) {
+  const match = await findContentFileBySlug(RESOURCES_DIR, slug);
+  if (!match) {
     return null;
   }
 
-  const { data, content } = matter(source);
+  const { data, content } = matter(match.source);
   const meta = normalizeResourceItem(data as ResourceItem);
 
   return {

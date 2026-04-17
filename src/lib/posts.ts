@@ -7,6 +7,7 @@ import rehypeAutolinkHeadings from "rehype-autolink-headings";
 import rehypeSlug from "rehype-slug";
 import remarkGfm from "remark-gfm";
 import { MDXComponents } from "@/components/mdx/components";
+import { findContentFileBySlug, normalizeContentSlug } from "./content-slug.js";
 
 const POSTS_DIR = path.join(process.cwd(), "src", "content", "posts");
 
@@ -48,14 +49,17 @@ export async function getFeaturedPosts(limit = 3) {
 
 export async function getPostMeta(slug: string) {
   try {
-    const filePath = path.join(POSTS_DIR, `${slug}.mdx`);
-    const source = await fs.readFile(filePath, "utf8");
+    const match = await findContentFileBySlug(POSTS_DIR, slug);
+    if (!match) {
+      return null;
+    }
+    const source = match.source;
     const { data, content } = matter(source);
     const stats = readingTime(content);
 
     return {
       ...(data as PostFrontmatter),
-      slug,
+      slug: normalizeContentSlug(slug),
       readingMinutes: `${Math.max(1, Math.ceil(stats.minutes))} min read`,
     } satisfies PostMeta;
   } catch {
@@ -64,9 +68,13 @@ export async function getPostMeta(slug: string) {
 }
 
 export async function getPostBySlug(slug: string) {
-  const filePath = path.join(POSTS_DIR, `${slug}.mdx`);
-  const source = await fs.readFile(filePath, "utf8");
+  const match = await findContentFileBySlug(POSTS_DIR, slug);
+  if (!match) {
+    throw new Error(`Post not found for slug: ${slug}`);
+  }
+  const source = match.source;
   const { content } = matter(source);
+  const normalizedSlug = normalizeContentSlug(slug);
 
   const { frontmatter, content: compiledContent } = await compileMDX<PostFrontmatter>({
     source,
@@ -94,7 +102,7 @@ export async function getPostBySlug(slug: string) {
   return {
     meta: {
       ...frontmatter,
-      slug,
+      slug: normalizedSlug,
       readingMinutes: `${Math.max(1, Math.ceil(readingTime(content).minutes))} min read`,
     } satisfies PostMeta,
     content: compiledContent,

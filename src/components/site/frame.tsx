@@ -16,6 +16,7 @@ import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { navItems, siteConfig, type NavItem } from "@/content/site";
+import { normalizeRoutePathname } from "@/lib/route-path";
 import { cn } from "@/lib/utils";
 import { RouteLink } from "./route-link";
 import { PageTransitionProvider, usePageTransition } from "./transition-context";
@@ -178,10 +179,11 @@ function AppFrameInner({ children }: { children: React.ReactNode }) {
 
   const motionEnabled = mounted && !prefersReducedMotion;
   const routeMotionEnabled = mounted;
+  const normalizedPathname = normalizeRoutePathname(pathname);
   const overlaySnapshot = activeTransition?.snapshot ?? null;
   const overlayVisible = routeMotionEnabled && !!overlaySnapshot;
-  const waitingForTarget = !!activeTransition && pathname !== activeTransition.toPathname;
-  const isHoldingTarget = !!activeTransition && pathname === activeTransition.toPathname && !stageReady;
+  const waitingForTarget = !!activeTransition && normalizedPathname !== activeTransition.toPathname;
+  const isHoldingTarget = !!activeTransition && normalizedPathname === activeTransition.toPathname && !stageReady;
   const isTransitionPending = waitingForTarget || isHoldingTarget;
   const routeProgress = useMemo(() => {
     if (!activeTransition) {
@@ -210,7 +212,7 @@ function AppFrameInner({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    if (pathname !== activeTransition.toPathname) {
+    if (normalizedPathname !== activeTransition.toPathname) {
       setStageReady(false);
       return;
     }
@@ -248,7 +250,7 @@ function AppFrameInner({ children }: { children: React.ReactNode }) {
         stageProbeRef.current = null;
       }
     };
-  }, [activeTransition, finishTransition, pathname, setPhase]);
+  }, [activeTransition, finishTransition, normalizedPathname, setPhase]);
 
   return (
     <LayoutGroup id="site-shell">
@@ -312,7 +314,7 @@ function AppFrameInner({ children }: { children: React.ReactNode }) {
 
                 {overlaySnapshot ? (
                   <motion.div
-                    key={`${activeTransition?.fromPathname ?? pathname}-${activeTransition?.id ?? 0}`}
+                    key={`${activeTransition?.fromPathname ?? normalizedPathname}-${activeTransition?.id ?? 0}`}
                     className={cn(
                       "shell-main shell-main-layer shell-main-layer-overlay",
                       phase === "exiting" && "shell-main-layer-overlay-holding",

@@ -1,7 +1,7 @@
 import path from "node:path";
-import fs from "node:fs/promises";
 import matter from "gray-matter";
 import type { ProjectContentFrontmatter } from "./content-shared";
+import { findContentFileBySlug, normalizeContentSlug } from "./content-slug.js";
 import { readCollectionItems } from "./content.js";
 
 const PROJECTS_DIR = path.join(process.cwd(), "src", "content", "projects");
@@ -21,6 +21,7 @@ function normalizeProjectItem(
     stack: project.stack ?? (project.tags.length > 0 ? project.tags : ["Notes"]),
     icon: project.icon ?? "grid",
     accent: project.accent ?? "primary",
+    assetNames: project.assetNames ?? [],
     assetPaths: project.assetPaths ?? [],
   };
 }
@@ -41,18 +42,17 @@ export async function getProjectSlugs() {
 
 export async function getProjectBySlug(slug: string) {
   const projects = await getAllProjects();
-  return projects.find((project) => project.slug === slug) ?? null;
+  const normalizedSlug = normalizeContentSlug(slug);
+  return projects.find((project) => project.slug === normalizedSlug) ?? null;
 }
 
 export async function getProjectDetailBySlug(slug: string) {
-  const filePath = path.join(PROJECTS_DIR, `${slug}.mdx`);
-  const source = await fs.readFile(filePath, "utf8").catch(() => null);
-
-  if (!source) {
+  const match = await findContentFileBySlug(PROJECTS_DIR, slug);
+  if (!match) {
     return null;
   }
 
-  const { data, content } = matter(source);
+  const { data, content } = matter(match.source);
   const meta = normalizeProjectItem(data as ProjectItem);
 
   return {

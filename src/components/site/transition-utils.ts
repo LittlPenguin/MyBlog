@@ -1,5 +1,7 @@
 "use client";
 
+import { normalizeRoutePathname } from "@/lib/route-path";
+
 export type RouteStageSnapshot = {
   html: string;
   width: number;
@@ -39,13 +41,13 @@ export function captureRouteStageSnapshot(element: HTMLElement) {
 
 export function resolveTransitionPathname(href: string) {
   if (typeof window === "undefined") {
-    return href.split("#")[0]?.split("?")[0] ?? href;
+    return normalizeRoutePathname(href);
   }
 
   try {
-    return new URL(href, window.location.href).pathname;
+    return normalizeRoutePathname(new URL(href, window.location.href).pathname);
   } catch {
-    return href.split("#")[0]?.split("?")[0] ?? href;
+    return normalizeRoutePathname(href);
   }
 }
 
