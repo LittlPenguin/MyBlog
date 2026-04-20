@@ -14,6 +14,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { navItems, siteConfig, type NavItem } from "@/content/site";
 import { normalizeRoutePathname } from "@/lib/route-path";
+import { resolveTransitionStageMinHeight, resolveWaitingContentMotion } from "@/lib/transition-stage";
 import { cn } from "@/lib/utils";
 import { RouteLink } from "./route-link";
 import { ThemeToggleButton } from "./theme-toggle";
@@ -152,6 +153,19 @@ function AppFrameInner({ children }: { children: React.ReactNode }) {
   const waitingForTarget = !!activeTransition && normalizedPathname !== activeTransition.toPathname;
   const isHoldingTarget = !!activeTransition && normalizedPathname === activeTransition.toPathname && !stageReady;
   const isTransitionPending = waitingForTarget || isHoldingTarget;
+  const transitionStageMinHeight = useMemo(
+    () =>
+      resolveTransitionStageMinHeight({
+        isTransitionActive: !!activeTransition,
+        snapshotHeight: activeTransition?.snapshot.height ?? null,
+        viewportHeight: mounted ? window.innerHeight : null,
+      }),
+    [activeTransition, mounted],
+  );
+  const waitingContentMotion = useMemo(
+    () => resolveWaitingContentMotion({ isWaitingForTarget: waitingForTarget }),
+    [waitingForTarget],
+  );
   const routeProgress = useMemo(() => {
     if (!activeTransition) {
       return "0%";
@@ -234,7 +248,12 @@ function AppFrameInner({ children }: { children: React.ReactNode }) {
                 <span className="shell-route-meter-fill" style={{ width: routeProgress }} />
               </div>
 
-              <div className="shell-main-stage" ref={stageRef} data-route-stage="main">
+              <div
+                className="shell-main-stage"
+                ref={stageRef}
+                data-route-stage="main"
+                style={{ minHeight: transitionStageMinHeight ?? undefined }}
+              >
                 <motion.main
                   key={pathname}
                   className={cn("shell-main shell-main-layer", overlayVisible && "shell-main-layer-current")}
@@ -251,15 +270,7 @@ function AppFrameInner({ children }: { children: React.ReactNode }) {
                         }
                       : false
                   }
-                  animate={{
-                    opacity: waitingForTarget ? 0.14 : 1,
-                    x: waitingForTarget ? 42 : 0,
-                    y: waitingForTarget ? 24 : 0,
-                    scaleX: waitingForTarget ? 0.91 : 1,
-                    scaleY: waitingForTarget ? 0.86 : 1,
-                    rotate: waitingForTarget ? 2.6 : 0,
-                    filter: waitingForTarget ? "blur(12px) saturate(0.84)" : "blur(0px) saturate(1)",
-                  }}
+                  animate={waitingContentMotion}
                   transition={
                     routeMotionEnabled
                       ? {

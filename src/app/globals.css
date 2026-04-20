@@ -1240,7 +1240,7 @@ html[data-theme="dark"] .board-card-title {
 }
 
 .page-loading-shell {
-  min-height: calc(100svh - 5rem);
+  min-height: max(calc(100svh - 5rem), 100%);
 }
 
 .resource-card-shell {
@@ -1389,6 +1389,7 @@ html[data-theme="dark"] .board-card-title {
 .loading-board {
   display: grid;
   gap: 1.5rem;
+  min-height: inherit;
   grid-template-columns: 260px minmax(0, 1fr);
 }
 
@@ -1408,7 +1409,8 @@ html[data-theme="dark"] .board-card-title {
 }
 
 .loading-sidebar {
-  height: calc(100svh - 6rem);
+  height: auto;
+  min-height: calc(100svh - 6rem);
   border-radius: 1.75rem;
   padding: 1.5rem;
 }
@@ -1437,6 +1439,7 @@ html[data-theme="dark"] .board-card-title {
 
 .loading-main {
   background: transparent;
+  min-height: inherit;
 }
 
 .loading-topbar {
