@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   applyEditorCategoryChange,
   applyEditorTitleChange,
+  buildEditorDetailHref,
   buildAttachmentAsset,
   buildCoverAsset,
   deriveEditorDraftFromMarkdown,
@@ -46,6 +48,7 @@ function createAssetSummaryLabel(draft: EditorDraft) {
 }
 
 export function EditorClient() {
+  const router = useRouter();
   const [draft, setDraft] = useState<EditorDraft>(() => buildInitialDraft());
   const [draftSource, setDraftSource] = useState<EditorDraftSource | null>(null);
   const [isSlugTouched, setIsSlugTouched] = useState(false);
@@ -380,6 +383,7 @@ export function EditorClient() {
       assetFileMapRef.current = new Map();
       applyPersistedDraft(result.draft, result.source);
       setMessage(result.message);
+      router.push(buildEditorDetailHref(result.category, result.slug));
     } catch {
       setStatus("error");
       setMessage("网络错误，发布请求未完成。");
@@ -441,7 +445,6 @@ export function EditorClient() {
             setDraft((current) => applyEditorCategoryChange({ draft: current, nextCategory: value }))
           }
           onScheduleChange={(value) => updateDraft("scheduleAt", value)}
-          onHiddenChange={(value) => updateDraft("isHidden", value)}
           onProjectMetaChange={updateProjectMeta}
           onResourceMetaChange={updateResourceMeta}
           onTagInputChange={setTagInput}

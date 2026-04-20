@@ -19,8 +19,6 @@ category: "椤圭洰"
 tags:
   - Legacy
 featured: false
-draft: false
-hidden: false
 year: "2026"
 stack:
   - Legacy
@@ -67,8 +65,6 @@ category: "璧勬簮"
 tags:
   - Legacy
 featured: false
-draft: false
-hidden: false
 url: "https://example.com"
 rating: 4
 accent: "primary"

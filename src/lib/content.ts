@@ -144,8 +144,6 @@ export function createBaseContentFrontmatter(
     tags: payload.tags,
     cover: persistedAssets.coverPath ?? undefined,
     featured: false,
-    draft: payload.isHidden,
-    hidden: payload.isHidden,
     assetNames: persistedAssets.assetEntries.map((entry) => entry.name),
     assetPaths: persistedAssets.assetEntries
       .map((entry) => entry.path)
@@ -399,7 +397,6 @@ export function createPersistedEditorDraft({
       category,
       tags: frontmatter.tags,
       scheduleAt: inferDraftScheduleAt(frontmatter.date),
-      isHidden: Boolean(frontmatter.hidden || frontmatter.draft),
       projectMeta: {
         href: "href" in frontmatter && typeof frontmatter.href === "string" ? frontmatter.href : "",
         github: "github" in frontmatter && typeof frontmatter.github === "string" ? frontmatter.github : "",

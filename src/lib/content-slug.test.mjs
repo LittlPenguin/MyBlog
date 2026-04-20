@@ -27,8 +27,6 @@ category: "项目"
 tags:
   - Test
 featured: false
-draft: false
-hidden: false
 assetNames: []
 ---
 
@@ -59,8 +57,6 @@ category: "资源"
 tags:
   - Test
 featured: false
-draft: false
-hidden: false
 assetNames: []
 ---
 

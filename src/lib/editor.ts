@@ -44,6 +44,23 @@ export type EditorSubmitPayload = EditorDraft & {
   source?: EditorDraftSource | null;
 };
 
+export function buildEditorDetailHref(category: EditorCategory, slug: string) {
+  const normalizedSlug = normalizeSlug(slug);
+
+  switch (category) {
+    case "archive":
+      return `/posts/${normalizedSlug}`;
+    case "project":
+      return `/projects/${normalizedSlug}`;
+    case "resource":
+      return `/resources/${normalizedSlug}`;
+    default: {
+      const exhaustiveCheck: never = category;
+      return exhaustiveCheck;
+    }
+  }
+}
+
 type DeriveEditorDraftOptions = {
   preferFrontmatter?: boolean;
 };
@@ -145,7 +162,7 @@ export function createEmptyArchiveMeta(): EditorArchiveMeta {
 }
 
 export function createEmptyEditorDraft(
-  partial: Partial<Pick<EditorDraft, "category" | "isHidden">> = {},
+  partial: Partial<Pick<EditorDraft, "category">> = {},
 ): EditorDraft {
   return {
     title: "",
@@ -155,7 +172,6 @@ export function createEmptyEditorDraft(
     category: partial.category ?? "archive",
     tags: [],
     scheduleAt: null,
-    isHidden: partial.isHidden ?? false,
     projectMeta: createEmptyProjectMeta(),
     resourceMeta: createEmptyResourceMeta(),
     archiveMeta: createEmptyArchiveMeta(),

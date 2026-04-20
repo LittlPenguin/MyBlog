@@ -36,7 +36,6 @@ test("createBaseContentFrontmatter maps editor draft into persisted metadata", (
       category: "archive",
       tags: ["quiet", "writing"],
       scheduleAt: "2026-04-10T08:30",
-      isHidden: true,
       projectMeta: {
         href: "",
         github: "",
@@ -81,8 +80,6 @@ test("createBaseContentFrontmatter maps editor draft into persisted metadata", (
     tags: ["quiet", "writing"],
     cover: "cover.webp",
     featured: false,
-    draft: true,
-    hidden: true,
     assetNames: ["diagram.png"],
     assetPaths: [],
   });
@@ -98,7 +95,6 @@ test("createBaseContentFrontmatter adds resource defaults needed by public resou
       category: "resource",
       tags: ["Reference", "UI"],
       scheduleAt: null,
-      isHidden: false,
       projectMeta: {
         href: "",
         github: "",
@@ -131,8 +127,6 @@ test("createBaseContentFrontmatter adds resource defaults needed by public resou
     tags: ["Reference", "UI"],
     cover: undefined,
     featured: false,
-    draft: false,
-    hidden: false,
     assetNames: [],
     assetPaths: [],
     url: "https://example.com/resource-draft",
@@ -152,7 +146,6 @@ test("createBaseContentFrontmatter adds project defaults needed by public projec
       category: "project",
       tags: ["Next.js", "MDX"],
       scheduleAt: null,
-      isHidden: false,
       projectMeta: {
         href: "https://example.com/project-draft",
         github: "https://github.com/example/project-draft",
@@ -185,8 +178,6 @@ test("createBaseContentFrontmatter adds project defaults needed by public projec
     tags: ["Next.js", "MDX"],
     cover: undefined,
     featured: false,
-    draft: false,
-    hidden: false,
     assetNames: [],
     assetPaths: [],
     year: "2025",
@@ -210,8 +201,6 @@ test("createContentFileBody builds frontmatter plus markdown body", () => {
       tags: ["demo"],
       cover: undefined,
       featured: false,
-      draft: false,
-      hidden: false,
       assetNames: [],
     },
     content: "# Demo\n\nBody",
@@ -252,7 +241,6 @@ test("buildEditorWriteResult returns path metadata and persisted compose payload
     category: "resource",
     tags: ["Reference"],
     scheduleAt: null,
-    isHidden: false,
     projectMeta: {
       href: "",
       github: "",
@@ -313,7 +301,6 @@ tags:
   - Reading
 cover: "/visuals/card.svg"
 featured: true
-draft: false
 ---
 
 # Quiet Library
@@ -348,8 +335,6 @@ category: "椤圭洰"
 tags:
   - Reading
 featured: false
-draft: false
-hidden: false
 year: "2026"
 stack:
   - Reading
@@ -384,8 +369,6 @@ test("createPersistedEditorDraft maps persisted file metadata back to compose st
       tags: ["Motion", "UI"],
       cover: "/uploads/projects/studio-notes/cover.webp",
       featured: false,
-      draft: true,
-      hidden: true,
       assetNames: ["diagram.pdf"],
       assetPaths: ["/uploads/projects/studio-notes/assets/diagram.pdf"],
       year: "2026",
@@ -405,7 +388,6 @@ test("createPersistedEditorDraft maps persisted file metadata back to compose st
       category: "project",
       tags: ["Motion", "UI"],
       scheduleAt: "2026-04-12T00:00",
-      isHidden: true,
       projectMeta: {
         href: "",
         github: "",
@@ -461,8 +443,6 @@ test("createPersistedEditorDraft restores project and resource meta fields from 
       tags: ["React"],
       cover: undefined,
       featured: false,
-      draft: false,
-      hidden: false,
       assetNames: [],
       assetPaths: [],
       year: "2025",
@@ -504,8 +484,6 @@ category: "归档"
 tags:
   - Notes
 featured: false
-draft: true
-hidden: true
 assetNames: []
 ---
 
@@ -528,7 +506,6 @@ First version.
       category: "archive",
       tags: ["Notes", "Update"],
       scheduleAt: null,
-      isHidden: true,
       projectMeta: {
         href: "",
         github: "",
@@ -560,8 +537,8 @@ First version.
 
   assert.ok(after.mtimeMs >= before.mtimeMs);
   assert.match(persisted, /title: Draft Note Updated/);
-  assert.match(persisted, /draft: true/);
-  assert.match(persisted, /hidden: true/);
+  assert.doesNotMatch(persisted, /^draft:/m);
+  assert.doesNotMatch(persisted, /^hidden:/m);
   assert.match(persisted, /Second version\./);
 });
 
@@ -583,8 +560,6 @@ category: "归档"
 tags:
   - Notes
 featured: false
-draft: true
-hidden: true
 assetNames: []
 ---
 
@@ -603,7 +578,6 @@ assetNames: []
       category: "resource",
       tags: ["Library"],
       scheduleAt: null,
-      isHidden: false,
       projectMeta: {
         href: "",
         github: "",
@@ -639,7 +613,8 @@ assetNames: []
   const moved = await readFile(path.join(resourcesDir, "resource-draft.mdx"), "utf8");
   assert.match(moved, /title: Resource Draft/);
   assert.match(moved, /category: 资源/);
-  assert.match(moved, /draft: false/);
+  assert.doesNotMatch(moved, /^draft:/m);
+  assert.doesNotMatch(moved, /^hidden:/m);
   assert.deepEqual(result.source, {
     originalCategory: "resource",
     originalSlug: "resource-draft",
@@ -659,7 +634,6 @@ test("updateEditorContentFile persists cover and assets into public uploads and 
       category: "resource",
       tags: ["Assets"],
       scheduleAt: null,
-      isHidden: false,
       projectMeta: {
         href: "",
         github: "",
@@ -778,9 +752,8 @@ test("buildContentFileSource produces a serializable write payload", async () =>
     content: "# Project Log\n\nUpdate",
     category: "project",
     tags: ["devlog"],
-    scheduleAt: null,
-    isHidden: false,
-    projectMeta: {
+      scheduleAt: null,
+      projectMeta: {
       href: "https://example.com/project-log",
       github: "https://github.com/example/project-log",
       docs: "https://example.com/project-log/docs",
@@ -807,7 +780,8 @@ test("buildContentFileSource produces a serializable write payload", async () =>
   const persisted = await readFile(outputPath, "utf8");
 
   assert.match(persisted, /category: 项目/);
-  assert.match(persisted, /draft: false/);
+  assert.doesNotMatch(persisted, /^draft:/m);
+  assert.doesNotMatch(persisted, /^hidden:/m);
   assert.match(persisted, /# Project Log/);
 });
 

@@ -53,7 +53,6 @@ export type EditorDraft = {
   category: EditorCategory;
   tags: string[];
   scheduleAt: string | null;
-  isHidden: boolean;
   projectMeta: EditorProjectMeta;
   resourceMeta: EditorResourceMeta;
   archiveMeta: EditorArchiveMeta;

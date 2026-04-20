@@ -9,10 +9,7 @@ import {
   Globe,
   Link2,
   LoaderCircle,
-  Lock,
-  Palette,
   Send,
-  Settings2,
   Sparkles,
   Star,
   Tags,
@@ -63,7 +60,6 @@ type ComposePanelProps = {
   onContentChange: (value: string) => void;
   onCategoryChange: (value: EditorCategory) => void;
   onScheduleChange: (value: string | null) => void;
-  onHiddenChange: (value: boolean) => void;
   onProjectMetaChange: <K extends keyof EditorDraft["projectMeta"]>(
     key: K,
     value: EditorDraft["projectMeta"][K],
@@ -146,7 +142,6 @@ export function EditorComposePanel({
   onContentChange,
   onCategoryChange,
   onScheduleChange,
-  onHiddenChange,
   onProjectMetaChange,
   onResourceMetaChange,
   onTagInputChange,
@@ -186,11 +181,6 @@ export function EditorComposePanel({
             >
               <Eye className="h-4 w-4" />
               <span>{mode === "preview" ? "返回编辑" : "预览"}</span>
-            </button>
-
-            <button type="button" className="editor-ghost-button" aria-disabled="true">
-              <Settings2 className="h-4 w-4" />
-              <span>API Key</span>
             </button>
 
             <button type="button" className="editor-primary-button" onClick={onSubmit} disabled={status === "saving"}>
@@ -324,7 +314,7 @@ export function EditorComposePanel({
                     </div>
                     <div className="editor-cover-empty-copy">
                       <span className="editor-cover-empty-title">上传文章封面</span>
-                      <span className="editor-cover-empty-subtle">仅支持本地图像，选择后会立即预览。</span>
+                      <span className="editor-cover-empty-subtle">仅支持本地图片，选择后会立即预览。</span>
                     </div>
                   </div>
                 )}
@@ -516,18 +506,6 @@ export function EditorComposePanel({
                 />
               </div>
               {errors.scheduleAt ? <p className="editor-field-error">{errors.scheduleAt}</p> : null}
-              <label className="editor-toggle-row">
-                <div className="editor-toggle-copy">
-                  <Lock className="h-4 w-4" />
-                  <span>存为私密 / Hidden</span>
-                </div>
-                <input
-                  type="checkbox"
-                  className="editor-hidden-checkbox"
-                  checked={draft.isHidden}
-                  onChange={(event) => onHiddenChange(event.target.checked)}
-                />
-              </label>
             </GlassPanel>
           </Reveal>
 

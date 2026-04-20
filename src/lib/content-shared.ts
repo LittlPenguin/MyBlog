@@ -8,8 +8,6 @@ export type BaseContentFrontmatter = {
   tags: string[];
   cover?: string;
   featured: boolean;
-  draft: boolean;
-  hidden: boolean;
   assetNames: string[];
   assetPaths?: string[];
 };

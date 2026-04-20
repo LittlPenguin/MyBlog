@@ -24,7 +24,7 @@ function createResourceMonogram(title: string) {
   return letters || title.slice(0, 2).toUpperCase() || "NT";
 }
 
-function normalizeResourceItem(resource: Partial<ResourceItem> & Pick<ResourceItem, "title" | "slug" | "summary" | "date" | "category" | "tags" | "featured" | "draft" | "hidden" | "assetNames">): ResourceItem {
+function normalizeResourceItem(resource: Partial<ResourceItem> & Pick<ResourceItem, "title" | "slug" | "summary" | "date" | "category" | "tags" | "featured" | "assetNames">): ResourceItem {
   return {
     ...resource,
     description: resource.description ?? resource.summary,
@@ -42,7 +42,6 @@ export async function getAllResources() {
 
   return items
     .map((item) => normalizeResourceItem(item.meta))
-    .filter((resource) => !resource.draft)
     .sort((a, b) => +new Date(b.date) - +new Date(a.date));
 }
 

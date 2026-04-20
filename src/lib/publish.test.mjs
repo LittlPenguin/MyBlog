@@ -20,7 +20,6 @@ test("writeEditorContentFile writes archive content into posts directory", async
       category: "archive",
       tags: ["note"],
       scheduleAt: null,
-      isHidden: false,
       cover: null,
       assets: [],
     },
@@ -51,7 +50,6 @@ test("writeEditorContentFile refuses to overwrite an existing slug", async () =>
       category: "archive",
       tags: [],
       scheduleAt: null,
-      isHidden: false,
       cover: null,
       assets: [],
     },
@@ -67,7 +65,6 @@ test("writeEditorContentFile refuses to overwrite an existing slug", async () =>
       category: "archive",
       tags: [],
       scheduleAt: null,
-      isHidden: false,
       cover: null,
       assets: [],
     },
@@ -87,7 +84,6 @@ test("published project metadata is discoverable through the public project read
   assert.ok(project);
   assert.equal(project?.slug, "nebula-core");
   assert.equal(project?.title, "Nebula Core");
-  assert.equal(project?.draft, false);
   assert.deepEqual(project?.stack, ["Next.js", "TypeScript", "Charts"]);
 });
 
@@ -97,7 +93,6 @@ test("published resource metadata is discoverable through the public resource re
   assert.ok(resource);
   assert.equal(resource?.slug, "framer-motion");
   assert.equal(resource?.title, "Framer Motion");
-  assert.equal(resource?.draft, false);
   assert.equal(resource?.url, "https://www.framer.com/motion/");
 });
 

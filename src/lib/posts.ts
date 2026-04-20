@@ -20,7 +20,6 @@ export type PostFrontmatter = {
   tags: string[];
   cover?: string;
   featured?: boolean;
-  draft?: boolean;
 };
 
 export type PostMeta = PostFrontmatter & {
@@ -38,7 +37,6 @@ export async function getAllPosts() {
 
   return posts
     .filter((post): post is PostMeta => post !== null)
-    .filter((post) => !post.draft)
     .sort((a, b) => +new Date(b.date) - +new Date(a.date));
 }
 

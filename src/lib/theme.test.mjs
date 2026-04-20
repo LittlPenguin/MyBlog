@@ -98,6 +98,23 @@ test("site frame renders the theme toggle as a fixed dock instead of a topbar ac
   assert.match(frameSource, /shell-theme-dock/);
 });
 
+test("theme toggle keeps a dedicated breathing animation hook for theme switches", () => {
+  const toggleSource = readFileSync(join(process.cwd(), "src/components/site/theme-toggle.tsx"), "utf8");
+  const globalStyles = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8");
+
+  assert.match(toggleSource, /shell-theme-toggle-breathing/);
+  assert.match(toggleSource, /setIsBreathing/);
+  assert.match(globalStyles, /@keyframes theme-toggle-breathe/);
+  assert.match(globalStyles, /\.shell-theme-toggle-breathing/);
+});
+
+test("theme-driven color transitions use linear timing to avoid eased color drift", () => {
+  const globalStyles = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8");
+
+  assert.match(globalStyles, /color 280ms linear/);
+  assert.match(globalStyles, /color 180ms linear/);
+});
+
 test("dark theme surfaces use dedicated shared classes instead of white utility hard-codes in key shared views", () => {
   const filesToCheck = [
     join(process.cwd(), "src/components/site/ui.tsx"),

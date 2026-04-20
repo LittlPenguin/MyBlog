@@ -12,7 +12,7 @@ export type ProjectItem = ProjectFrontmatter;
 
 function normalizeProjectItem(
   project: Partial<ProjectItem> &
-    Pick<ProjectItem, "title" | "slug" | "summary" | "date" | "category" | "tags" | "featured" | "draft" | "hidden" | "assetNames">,
+    Pick<ProjectItem, "title" | "slug" | "summary" | "date" | "category" | "tags" | "featured" | "assetNames">,
 ): ProjectItem {
   return {
     ...project,
@@ -31,7 +31,6 @@ export async function getAllProjects() {
 
   return items
     .map((item) => normalizeProjectItem(item.meta))
-    .filter((project) => !project.draft)
     .sort((a, b) => +new Date(b.date) - +new Date(a.date));
 }
 

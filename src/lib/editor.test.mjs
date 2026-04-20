@@ -1,8 +1,11 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import test from "node:test";
 import {
   applyEditorCategoryChange,
   applyEditorTitleChange,
+  buildEditorDetailHref,
   createEmptyEditorDraft,
   deriveEditorDraftFromMarkdown,
   formatEditorFileSize,
@@ -31,7 +34,6 @@ test("createEmptyEditorDraft applies provided compose defaults", () => {
   assert.deepEqual(
     createEmptyEditorDraft({
       category: "project",
-      isHidden: true,
     }),
     {
       title: "",
@@ -41,7 +43,6 @@ test("createEmptyEditorDraft applies provided compose defaults", () => {
       category: "project",
       tags: [],
       scheduleAt: null,
-      isHidden: true,
       projectMeta: {
         href: "",
         github: "",
@@ -83,7 +84,6 @@ test("prepareEditorSubmitPayload trims fields and normalizes metadata", () => {
     category: "resource",
     tags: [" #React ", "react", "UI "],
     scheduleAt: "",
-    isHidden: true,
     projectMeta: {
       href: " https://example.com/project ",
       github: " https://github.com/example/repo ",
@@ -127,7 +127,6 @@ test("prepareEditorSubmitPayload trims fields and normalizes metadata", () => {
     category: "resource",
     tags: ["React", "UI"],
     scheduleAt: null,
-    isHidden: true,
     projectMeta: {
       href: "https://example.com/project",
       github: "https://github.com/example/repo",
@@ -173,7 +172,22 @@ test("validateEditorDraft rejects invalid schedule values", () => {
     category: "archive",
     tags: [],
     scheduleAt: "not-a-date",
-    isHidden: false,
+    projectMeta: {
+      href: "",
+      github: "",
+      docs: "",
+      year: "",
+      stack: [],
+      icon: "grid",
+      accent: "primary",
+    },
+    resourceMeta: {
+      url: "",
+      rating: 4,
+      monogram: "",
+      accent: "primary",
+    },
+    archiveMeta: {},
     cover: null,
     assets: [],
   });
@@ -215,7 +229,6 @@ Body line 1.
     category: "project",
     tags: ["React", "Motion"],
     scheduleAt: null,
-    isHidden: false,
     projectMeta: {
       href: "https://example.com/project",
       github: "https://github.com/example/repo",
@@ -264,7 +277,6 @@ Body line 1.
     category: "archive",
     tags: [],
     scheduleAt: null,
-    isHidden: false,
     projectMeta: {
       href: "",
       github: "",
@@ -473,4 +485,31 @@ test("applyEditorCategoryChange updates category template only when the draft is
   assert.equal(filledResult.category, "resource");
   assert.equal(filledResult.content, "# Custom body\n\nKeep me.");
   assert.equal(filledResult.resourceMeta.rating, 4);
+});
+
+test("buildEditorDetailHref maps editor categories to public detail routes", () => {
+  assert.equal(buildEditorDetailHref("archive", "Hello World"), "/posts/hello-world");
+  assert.equal(buildEditorDetailHref("project", "测试项目"), "/projects/测试项目");
+  assert.equal(buildEditorDetailHref("resource", "UI Kit / 2026"), "/resources/ui-kit-2026");
+});
+
+test("editor surface copy does not contain known mojibake fragments", () => {
+  const editorFiles = [
+    join(process.cwd(), "src/app/editor/editor-client.tsx"),
+    join(process.cwd(), "src/app/editor/editor-sections.tsx"),
+    join(process.cwd(), "src/app/editor/editor-helpers.tsx"),
+  ];
+
+  const mojibakeTokens = ["鏂", "鍙", "褰", "璧", "瀵", "棰", "椤", "闊", "瑙", "缂", "灏", "鍑", "鍔"];
+
+  for (const filePath of editorFiles) {
+    const source = readFileSync(filePath, "utf8");
+    for (const token of mojibakeTokens) {
+      assert.equal(
+        source.includes(token),
+        false,
+        `expected ${filePath} to not contain mojibake token ${token}`,
+      );
+    }
+  }
 });

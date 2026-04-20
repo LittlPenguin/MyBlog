@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { MoonStar, SunMedium } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   applyThemeMode,
   normalizeThemeMode,
@@ -30,6 +30,8 @@ export function ThemeToggleButton() {
   const reduceMotion = useReducedMotion();
   const [theme, setTheme] = useState<ThemeMode>("light");
   const [mounted, setMounted] = useState(false);
+  const [isBreathing, setIsBreathing] = useState(false);
+  const breathingTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     const resolvedTheme = readPreferredTheme();
@@ -38,8 +40,34 @@ export function ThemeToggleButton() {
     setMounted(true);
   }, []);
 
+  useEffect(() => {
+    return () => {
+      if (breathingTimerRef.current !== null) {
+        window.clearTimeout(breathingTimerRef.current);
+      }
+    };
+  }, []);
+
   const handleToggle = () => {
     const nextTheme = toggleThemeMode(theme);
+
+    if (!reduceMotion) {
+      if (breathingTimerRef.current !== null) {
+        window.clearTimeout(breathingTimerRef.current);
+      }
+
+      setIsBreathing(false);
+
+      window.requestAnimationFrame(() => {
+        setIsBreathing(true);
+      });
+
+      breathingTimerRef.current = window.setTimeout(() => {
+        setIsBreathing(false);
+        breathingTimerRef.current = null;
+      }, 720);
+    }
+
     applyThemeMode(nextTheme, document.documentElement);
     persistThemeMode(nextTheme, window.localStorage);
     setTheme(nextTheme);
@@ -53,7 +81,7 @@ export function ThemeToggleButton() {
       type="button"
       aria-label={isDark ? "切换到明亮模式" : "切换到暗黑模式"}
       title={isDark ? "切换到明亮模式" : "切换到暗黑模式"}
-      className="shell-topbar-button shell-theme-toggle"
+      className={`shell-topbar-button shell-theme-toggle${isBreathing ? " shell-theme-toggle-breathing" : ""}`}
       onClick={handleToggle}
     >
       <AnimatePresence mode="wait" initial={false}>
