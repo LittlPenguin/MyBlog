@@ -47,7 +47,7 @@ export default async function ProjectDetailPage({ params }: PageProps) {
   const { slug } = await params;
   const project = await getProjectDetailBySlug(slug);
 
-  if (!project || project.meta.draft) {
+  if (!project) {
     notFound();
   }
 
@@ -68,7 +68,7 @@ export default async function ProjectDetailPage({ params }: PageProps) {
       summary={<p>{summary}</p>}
       cover={
         project.meta.cover ? (
-          <div className="overflow-hidden rounded-[28px] border border-white/60 bg-white/55 p-2 shadow-[var(--shadow-far)]">
+          <div className="theme-surface overflow-hidden rounded-[28px] p-2 shadow-[var(--shadow-far)]">
             <Image
               src={project.meta.cover}
               alt={project.meta.title}

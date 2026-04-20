@@ -49,7 +49,7 @@ export default async function ResourceDetailPage({ params, searchParams }: PageP
   const filters = await searchParams;
   const resource = await getResourceDetailBySlug(slug);
 
-  if (!resource || resource.meta.draft) {
+  if (!resource) {
     notFound();
   }
 
@@ -77,7 +77,7 @@ export default async function ResourceDetailPage({ params, searchParams }: PageP
       summary={<p>{summary}</p>}
       cover={
         resource.meta.cover ? (
-          <div className="overflow-hidden rounded-[28px] border border-white/60 bg-white/55 p-2 shadow-[var(--shadow-far)]">
+          <div className="theme-surface overflow-hidden rounded-[28px] p-2 shadow-[var(--shadow-far)]">
             <Image
               src={resource.meta.cover}
               alt={resource.meta.title}

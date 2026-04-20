@@ -112,7 +112,7 @@ export default async function AboutPage() {
                   <a
                     key={item.label}
                     href={item.href}
-                    className="rounded-full border border-white/60 bg-white/58 px-4 py-2 text-sm transition hover:text-primary"
+                    className="theme-surface rounded-full px-4 py-2 text-sm transition hover:text-primary"
                   >
                     {item.label}
                   </a>
@@ -225,15 +225,15 @@ export default async function AboutPage() {
 
                 <form className="space-y-3">
                   <div className="grid gap-3 sm:grid-cols-2">
-                    <input className="rounded-[18px] bg-white/72 px-4 py-3 text-sm outline-none" placeholder="Name" />
+                    <input className="theme-surface w-full rounded-[18px] px-4 py-3 text-sm outline-none" placeholder="Name" />
                     <input
-                      className="rounded-[18px] bg-white/72 px-4 py-3 text-sm outline-none"
+                      className="theme-surface w-full rounded-[18px] px-4 py-3 text-sm outline-none"
                       placeholder="Email"
                       type="email"
                     />
                   </div>
                   <textarea
-                    className="min-h-32 w-full rounded-[22px] bg-white/72 px-4 py-3 text-sm outline-none"
+                    className="theme-surface min-h-32 w-full rounded-[22px] px-4 py-3 text-sm outline-none"
                     placeholder="Your message..."
                   />
                   <button

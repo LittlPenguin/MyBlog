@@ -71,7 +71,7 @@ export default async function ProjectsPage() {
                   <div className="space-y-5">
                     <div className="flex items-start justify-between gap-4">
                       {project.cover ? (
-                        <div className="h-24 w-36 overflow-hidden rounded-[24px] border border-white/60 bg-white/70 shadow-[var(--shadow-near)]">
+                        <div className="theme-surface h-24 w-36 overflow-hidden rounded-[24px]">
                           <Image
                             src={project.cover}
                             alt={project.title}
@@ -114,12 +114,12 @@ export default async function ProjectsPage() {
                       </span>
                     ) : null}
                     {project.github ? (
-                      <span className="inline-flex items-center gap-2 rounded-full border border-white/60 bg-white/56 px-4 py-2 text-sm font-semibold text-foreground">
+                      <span className="theme-surface inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-foreground">
                         GitHub
                       </span>
                     ) : null}
                     {project.docs ? (
-                      <span className="inline-flex items-center gap-2 rounded-full border border-white/60 bg-white/56 px-4 py-2 text-sm font-semibold text-foreground">
+                      <span className="theme-surface inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-foreground">
                         Docs
                       </span>
                     ) : null}

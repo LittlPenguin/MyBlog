@@ -21,26 +21,26 @@ function ResourcesFallback() {
         <Pill active className="mx-auto">
           Resource Shelf
         </Pill>
-        <div className="mx-auto mt-4 h-16 w-[24rem] max-w-full rounded-full bg-white/70" />
-        <div className="mx-auto mt-4 h-5 w-[34rem] max-w-full rounded-full bg-white/60" />
+        <div className="theme-surface mx-auto mt-4 h-16 w-[24rem] max-w-full rounded-full" />
+        <div className="theme-surface-soft mx-auto mt-4 h-5 w-[34rem] max-w-full rounded-full" />
       </section>
 
       <section className="scroll-strip flex gap-2 overflow-x-auto py-1">
         {Array.from({ length: 5 }, (_, index) => (
-          <div key={index} className="h-10 w-24 rounded-full bg-white/66" />
+          <div key={index} className="theme-surface h-10 w-24 rounded-full" />
         ))}
       </section>
 
       <section className="editorial-grid md:grid-cols-2 xl:grid-cols-3">
         {Array.from({ length: 6 }, (_, index) => (
           <GlassPanel key={index} className="p-6">
-            <div className="h-12 w-12 rounded-[18px] bg-white/76" />
-            <div className="mt-5 h-8 w-2/3 rounded-full bg-white/80" />
-            <div className="mt-3 h-4 w-3/4 rounded-full bg-white/66" />
+            <div className="theme-surface h-12 w-12 rounded-[18px]" />
+            <div className="theme-surface mt-5 h-8 w-2/3 rounded-full" />
+            <div className="theme-surface-soft mt-3 h-4 w-3/4 rounded-full" />
             <div className="mt-4 space-y-2">
-              <div className="h-4 rounded-full bg-white/60" />
-              <div className="h-4 rounded-full bg-white/52" />
-              <div className="h-4 w-4/5 rounded-full bg-white/52" />
+              <div className="theme-surface-soft h-4 rounded-full" />
+              <div className="theme-surface-ghost h-4 rounded-full" />
+              <div className="theme-surface-ghost h-4 w-4/5 rounded-full" />
             </div>
             <div className="mt-5 flex gap-2">
               <SoftPanel className="h-8 w-24">

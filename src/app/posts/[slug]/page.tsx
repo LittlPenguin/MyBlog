@@ -43,7 +43,7 @@ export default async function PostPage({ params }: PageProps) {
   const { slug } = await params;
   const post = await getPostBySlug(slug).catch(() => null);
 
-  if (!post || post.meta.draft) {
+  if (!post) {
     notFound();
   }
 

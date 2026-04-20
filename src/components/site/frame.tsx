@@ -3,22 +3,20 @@
 import { LayoutGroup, motion, useReducedMotion } from "framer-motion";
 import {
   Archive,
-  Bell,
   FolderKanban,
   Home,
   LibraryBig,
-  MoonStar,
   Plus,
   Settings2,
   UserRound,
 } from "lucide-react";
-import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { navItems, siteConfig, type NavItem } from "@/content/site";
 import { normalizeRoutePathname } from "@/lib/route-path";
 import { cn } from "@/lib/utils";
 import { RouteLink } from "./route-link";
+import { ThemeToggleButton } from "./theme-toggle";
 import { PageTransitionProvider, usePageTransition } from "./transition-context";
 
 const ENTER_SETTLE_MS = 680;
@@ -43,37 +41,6 @@ function resolveNavIcon(icon: NavItem["icon"]) {
 function isActiveRoute(pathname: string, item: NavItem) {
   return (item.match ?? [item.href]).some((entry) =>
     entry === "/" ? pathname === "/" : pathname === entry || pathname.startsWith(`${entry}/`),
-  );
-}
-
-function ShellTopBar() {
-  return (
-    <header className="shell-topbar" data-route-overlay-ignore>
-      <div className="shell-topbar-actions">
-        <button type="button" aria-label="Toggle theme" className="shell-topbar-button">
-          <MoonStar className="h-4 w-4" />
-        </button>
-        <button type="button" aria-label="Notifications" className="shell-topbar-button">
-          <Bell className="h-4 w-4" />
-        </button>
-        <button
-          type="button"
-          aria-label="Settings"
-          className="shell-topbar-button shell-topbar-button-accent"
-        >
-          <Settings2 className="h-4 w-4" />
-        </button>
-        <div className="shell-avatar">
-          <Image
-            src={siteConfig.avatar}
-            alt="YYsuni avatar"
-            width={96}
-            height={96}
-            className="h-full w-full object-cover"
-          />
-        </div>
-      </div>
-    </header>
   );
 }
 
@@ -121,7 +88,7 @@ function SideNavigation() {
       </div>
 
       <RouteLink href="/editor" transitionKey="nav-editor" className="shell-editor-link">
-        <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/22">
+        <span className="theme-surface-ghost inline-flex h-8 w-8 items-center justify-center rounded-full">
           <Settings2 className="h-4 w-4" />
         </span>
         <span>Markdown Editor</span>
@@ -259,8 +226,6 @@ function AppFrameInner({ children }: { children: React.ReactNode }) {
           <SideNavigation />
 
           <div className="shell-content">
-            <ShellTopBar />
-
             <div className="shell-main-wrap">
               <div
                 className={cn("shell-route-meter", activeTransition && "shell-route-meter-active")}
@@ -383,6 +348,10 @@ function AppFrameInner({ children }: { children: React.ReactNode }) {
               </div>
             </div>
           </div>
+        </div>
+
+        <div className="shell-theme-dock" data-route-overlay-ignore>
+          <ThemeToggleButton />
         </div>
 
         <FloatingAction motionEnabled={motionEnabled} />

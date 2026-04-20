@@ -59,8 +59,8 @@ function ArchiveBoardSkeleton() {
             <div className="space-y-4">
               {Array.from({ length: 3 }, (_, itemIndex) => (
                 <SoftPanel key={`${column.title}-${itemIndex}`} className="p-4">
-                  <div className="h-3 w-20 rounded-full bg-white/60" />
-                  <div className="mt-3 h-5 w-4/5 rounded-full bg-white/80" />
+                  <div className="theme-surface-ghost h-3 w-20 rounded-full" />
+                  <div className="theme-surface h-5 w-4/5 rounded-full" />
                 </SoftPanel>
               ))}
             </div>
@@ -140,7 +140,7 @@ export default function ArchivePage() {
       <section className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <Reveal>
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full bg-white/68 px-3 py-1 text-[10px] uppercase tracking-[0.22em] text-muted-foreground shadow-[var(--shadow-near)]">
+            <div className="theme-surface inline-flex items-center gap-2 rounded-full px-3 py-1 text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
               <BookMarked className="h-3.5 w-3.5 text-primary" />
               Archive Board
             </div>
@@ -155,11 +155,11 @@ export default function ArchivePage() {
 
         <Reveal delay={0.05}>
           <div className="flex flex-wrap items-center gap-3">
-            <div className="inline-flex items-center gap-2 rounded-full bg-white/72 px-4 py-2.5 shadow-[var(--shadow-near)]">
+            <div className="theme-surface inline-flex items-center gap-2 rounded-full px-4 py-2.5">
               <Search className="h-4 w-4 text-primary" />
               <span className="text-sm text-muted-foreground">搜索文章</span>
             </div>
-            <div className="inline-flex items-center gap-2 rounded-full bg-white/72 px-4 py-2.5 shadow-[var(--shadow-near)]">
+            <div className="theme-surface inline-flex items-center gap-2 rounded-full px-4 py-2.5">
               <span className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">分类</span>
               <ChevronDown className="h-4 w-4 text-muted-foreground" />
             </div>

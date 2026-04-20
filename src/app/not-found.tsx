@@ -23,7 +23,7 @@ export default function NotFound() {
           <RouteLink
             href="/archive"
             transitionKey="404-archive"
-            className="rounded-full border border-white/60 bg-white/58 px-5 py-3 text-sm font-semibold text-foreground"
+            className="theme-surface rounded-full px-5 py-3 text-sm font-semibold text-foreground"
           >
             查看归档
           </RouteLink>

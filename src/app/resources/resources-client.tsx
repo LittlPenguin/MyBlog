@@ -92,7 +92,7 @@ export function ResourcesClient({
                 setQuery(value);
                 replaceFilters({ q: value, category });
               }}
-              className="w-full rounded-full border border-white/50 bg-white/72 py-3 pl-11 pr-5 text-sm shadow-[0_12px_24px_rgba(46,47,45,0.06)] outline-none transition focus:border-primary/30"
+              className="theme-surface w-full rounded-full py-3 pl-11 pr-5 text-sm text-foreground outline-none transition focus:border-primary/30"
               placeholder="搜索资源、灵感与工具..."
             />
           </div>
@@ -112,7 +112,7 @@ export function ResourcesClient({
               "whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition",
               category === item
                 ? "bg-primary text-white shadow-[0_14px_28px_rgba(172,42,31,0.22)]"
-                : "border border-white/55 bg-white/66 text-muted-foreground hover:text-primary",
+                : "theme-surface text-muted-foreground hover:text-primary",
               index === 0 ? "ml-1" : "",
             )}
           >
@@ -132,7 +132,7 @@ export function ResourcesClient({
               <GlassPanel className="resource-card-shell flex h-full flex-col p-6">
                 <div className="flex items-start justify-between gap-4">
                   {resource.cover ? (
-                    <div className="h-20 w-28 overflow-hidden rounded-[22px] border border-white/60 bg-white/70 shadow-[var(--shadow-near)]">
+                    <div className="theme-surface h-20 w-28 overflow-hidden rounded-[22px]">
                       <Image
                         src={resource.cover}
                         alt={resource.title}
@@ -143,7 +143,7 @@ export function ResourcesClient({
                       />
                     </div>
                   ) : (
-                    <div className="inline-flex h-12 w-12 items-center justify-center rounded-[18px] bg-white text-sm font-heading font-black tracking-[-0.04em] text-primary shadow-[var(--shadow-near)]">
+                    <div className="theme-surface inline-flex h-12 w-12 items-center justify-center rounded-[18px] text-sm font-heading font-black tracking-[-0.04em] text-primary">
                       {resource.monogram}
                     </div>
                   )}

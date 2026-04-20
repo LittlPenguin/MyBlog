@@ -38,7 +38,7 @@ export function DetailBackLink({
       href={href}
       preserveScroll={preserveScroll}
       transitionKey={transitionKey}
-      className="inline-flex w-fit items-center gap-2 rounded-full bg-white/72 px-4 py-2 text-sm text-muted-foreground shadow-[var(--shadow-near)] transition hover:text-foreground"
+      className="theme-surface inline-flex w-fit items-center gap-2 rounded-full px-4 py-2 text-sm text-muted-foreground transition hover:text-foreground"
     >
       {label}
     </RouteLink>
@@ -61,7 +61,7 @@ export function DetailHeroActions({ items }: { items: DetailActionVisualItem[] }
           className={cn(
             "inline-flex items-center gap-2 rounded-full px-4 py-3 text-sm font-semibold transition hover:-translate-y-0.5",
             item.variant === "secondary"
-              ? "border border-white/60 bg-white/58 text-foreground"
+              ? "theme-surface text-foreground"
               : "bg-gradient-to-r from-primary to-primary-strong text-white shadow-[0_18px_36px_rgba(172,42,31,0.22)]",
           )}
         >
@@ -86,7 +86,7 @@ export function DetailAttachmentsSection({
   }
 
   return (
-    <div className="mt-10 space-y-3 border-t border-white/45 pt-8">
+    <div className="mt-10 space-y-3 border-t border-line/70 pt-8">
       <h2 className="font-heading text-2xl font-black tracking-[-0.05em] text-foreground">{title}</h2>
       <div className="grid gap-3 sm:grid-cols-2">
         {normalizeDetailAttachments(items).map((item) => {

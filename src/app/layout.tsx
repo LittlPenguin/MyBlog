@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Epilogue, Plus_Jakarta_Sans, Space_Grotesk } from "next/font/google";
 import { AppFrame } from "@/components/site/frame";
+import { createThemeInitScript } from "@/lib/theme";
 import "./globals.css";
 
 const heading = Epilogue({
@@ -55,7 +56,16 @@ export default function RootLayout({
       lang="zh-CN"
       className={`${heading.variable} ${body.variable} ${label.variable} min-h-full antialiased`}
       data-scroll-behavior="smooth"
+      suppressHydrationWarning
     >
+      <head>
+        <script
+          id="theme-init"
+          dangerouslySetInnerHTML={{
+            __html: createThemeInitScript(),
+          }}
+        />
+      </head>
       <body className="min-h-screen text-foreground">
         <AppFrame>{children}</AppFrame>
       </body>

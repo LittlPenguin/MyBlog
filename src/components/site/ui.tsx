@@ -38,7 +38,7 @@ export function Pill({
         "inline-flex items-center rounded-full px-3 py-1 text-[10px] font-label uppercase tracking-[0.2em]",
         active
           ? "bg-primary-soft text-primary shadow-[0_6px_16px_rgba(172,42,31,0.16)]"
-          : "bg-white/72 text-muted-foreground shadow-[0_4px_12px_rgba(46,47,45,0.05)]",
+          : "theme-surface text-muted-foreground",
         className,
       )}
     >
@@ -68,7 +68,7 @@ export function ActionLink({
         "inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-semibold transition",
         variant === "primary"
           ? "bg-gradient-to-r from-primary to-primary-strong text-white shadow-[0_18px_36px_rgba(172,42,31,0.22)] hover:-translate-y-0.5"
-          : "border border-white/60 bg-white/58 text-foreground shadow-[0_8px_20px_rgba(46,47,45,0.05)] hover:-translate-y-0.5",
+          : "theme-surface text-foreground hover:-translate-y-0.5",
         className,
       )}
     >
@@ -99,7 +99,7 @@ export function ArticlePreviewCard({
       href={`/posts/${post.slug}`}
       transitionKey={`post-${post.slug}`}
       className={cn(
-        "group flex h-full flex-col justify-between rounded-[24px] border border-white/55 bg-white/56 p-5 shadow-[0_10px_28px_rgba(46,47,45,0.05)] backdrop-blur-xl transition hover:-translate-y-1 hover:shadow-[0_18px_36px_rgba(46,47,45,0.08)]",
+        "theme-surface group flex h-full flex-col justify-between rounded-[24px] p-5 backdrop-blur-xl transition hover:-translate-y-1 hover:shadow-[0_18px_36px_rgba(46,47,45,0.08)]",
         className,
       )}
     >
