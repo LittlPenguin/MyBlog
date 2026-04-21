@@ -143,3 +143,74 @@ test("dark theme surfaces use dedicated shared classes instead of white utility 
     }
   }
 });
+
+test("archive filters use breathing icon triggers that open floating search and category dialogs", () => {
+  const archiveClientSource = readFileSync(join(process.cwd(), "src/app/archive/archive-client.tsx"), "utf8");
+  const globalStyles = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8");
+
+  assert.match(archiveClientSource, /archive-toolbar-layer/);
+  assert.match(archiveClientSource, /archive-toolbar/);
+  assert.match(archiveClientSource, /archive-tool-shell/);
+  assert.match(archiveClientSource, /archive-tool-trigger/);
+  assert.match(archiveClientSource, /archive-tool-trigger-breathing/);
+  assert.match(archiveClientSource, /archive-search-dialog/);
+  assert.match(archiveClientSource, /archive-filter-dialog/);
+  assert.match(archiveClientSource, /archive-dialog-panel/);
+  assert.match(archiveClientSource, /archive-filter-indicator/);
+  assert.match(archiveClientSource, /搜索文章/);
+  assert.match(archiveClientSource, /分类筛选/);
+  assert.match(archiveClientSource, /标题、摘要、标签、分类/);
+  assert.match(archiveClientSource, /清除/);
+  assert.match(archiveClientSource, /全部分类/);
+  assert.doesNotMatch(archiveClientSource, /收起/);
+  assert.match(archiveClientSource, /AnimatePresence/);
+  assert.match(archiveClientSource, /motion\./);
+  assert.match(archiveClientSource, /Search/);
+  assert.match(archiveClientSource, /Filter/);
+  assert.match(globalStyles, /\.archive-toolbar-layer/);
+  assert.match(globalStyles, /\.archive-toolbar/);
+  assert.match(globalStyles, /\.archive-tool-shell/);
+  assert.match(globalStyles, /\.archive-tool-trigger/);
+  assert.match(globalStyles, /\.archive-tool-trigger-breathing/);
+  assert.match(globalStyles, /@keyframes archive-tool-breathe/);
+  assert.match(globalStyles, /\.archive-dialog-panel/);
+  assert.match(globalStyles, /\.archive-search-dialog/);
+  assert.match(globalStyles, /\.archive-filter-dialog/);
+  assert.match(globalStyles, /z-index:\s*18/);
+  assert.match(globalStyles, /z-index:\s*24/);
+  assert.match(globalStyles, /height:\s*2\.125rem/);
+  assert.match(globalStyles, /width:\s*2\.125rem/);
+});
+
+test("archive floating dialogs use denser glass surfaces for readability in both themes", () => {
+  const globalStyles = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8");
+
+  assert.match(
+    globalStyles,
+    /linear-gradient\(180deg,\s*color-mix\(in srgb, var\(--surface-strong\) 97%, transparent\),\s*color-mix\(in srgb, var\(--surface\) 99%, transparent\)\)/,
+  );
+  assert.match(globalStyles, /border-color:\s*color-mix\(in srgb, var\(--primary\) 22%, var\(--line\)\)/);
+  assert.match(globalStyles, /0 30px 62px rgba\(89, 46, 32, 0\.22\)/);
+  assert.match(globalStyles, /inset 0 1px 0 rgba\(255, 255, 255, 0\.82\)/);
+  assert.match(globalStyles, /border-color:\s*rgba\(255, 208, 143, 0\.3\)/);
+  assert.match(
+    globalStyles,
+    /linear-gradient\(180deg,\s*rgba\(24, 31, 39, 0\.992\),\s*rgba\(18, 24, 31, 0\.972\)\)/,
+  );
+  assert.match(globalStyles, /0 30px 66px rgba\(0, 0, 0, 0\.46\)/);
+  assert.match(globalStyles, /inset 0 1px 0 rgba\(255, 255, 255, 0\.1\)/);
+});
+
+test("archive dialogs close only on outside pointer interactions", () => {
+  const archiveClientSource = readFileSync(join(process.cwd(), "src/app/archive/archive-client.tsx"), "utf8");
+
+  assert.match(archiveClientSource, /window\.addEventListener\("pointerdown", handlePointerDown\)/);
+  assert.match(archiveClientSource, /setOpenPanel\(null\);/);
+  assert.doesNotMatch(archiveClientSource, /onBlurCapture=/);
+  assert.doesNotMatch(archiveClientSource, /handleKeyDown/);
+  assert.doesNotMatch(archiveClientSource, /window\.addEventListener\("keydown"/);
+  assert.doesNotMatch(archiveClientSource, /archive-dialog-close/);
+  assert.doesNotMatch(archiveClientSource, /收起/);
+  assert.doesNotMatch(archiveClientSource, /onClick=\{\(\) => setOpenPanel\(null\)\}/);
+  assert.doesNotMatch(archiveClientSource, /setCategory\(item\)[\s\S]*setOpenPanel\(null\)/);
+});

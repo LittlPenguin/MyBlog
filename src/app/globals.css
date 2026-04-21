@@ -368,6 +368,337 @@ html[data-theme="dark"] .theme-surface-ghost {
   display: none;
 }
 
+@keyframes archive-tool-breathe {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    box-shadow:
+      0 8px 18px rgba(89, 46, 32, 0.08),
+      inset 0 1px 0 rgba(255, 255, 255, 0.72),
+      0 0 0 0 rgba(242, 92, 75, 0.12);
+  }
+
+  50% {
+    transform: translate3d(0, -1px, 0) scale(1.03);
+    box-shadow:
+      0 12px 22px rgba(89, 46, 32, 0.12),
+      inset 0 1px 0 rgba(255, 255, 255, 0.78),
+      0 0 0 7px rgba(242, 92, 75, 0.08);
+  }
+}
+
+@keyframes archive-tool-breathe-dark {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    box-shadow:
+      0 10px 20px rgba(0, 0, 0, 0.24),
+      inset 0 1px 0 rgba(255, 255, 255, 0.06),
+      0 0 0 0 rgba(255, 208, 143, 0.12);
+  }
+
+  50% {
+    transform: translate3d(0, -1px, 0) scale(1.03);
+    box-shadow:
+      0 14px 26px rgba(0, 0, 0, 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08),
+      0 0 0 7px rgba(255, 208, 143, 0.1);
+  }
+}
+
+.archive-toolbar {
+  display: inline-flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.archive-toolbar-layer {
+  position: relative;
+  z-index: 18;
+  isolation: isolate;
+}
+
+.archive-tool-shell {
+  position: relative;
+}
+
+.archive-tool-trigger {
+  position: relative;
+  display: inline-flex;
+  height: 2.125rem;
+  width: 2.125rem;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 999px;
+  color: var(--foreground);
+  box-shadow:
+    0 8px 18px rgba(89, 46, 32, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.68);
+  transition:
+    transform 180ms ease,
+    color 180ms linear,
+    border-color 220ms ease,
+    box-shadow 220ms ease,
+    background 220ms ease;
+}
+
+.archive-tool-trigger:hover {
+  transform: translateY(-1px);
+  color: var(--primary);
+}
+
+.archive-tool-trigger-active,
+.archive-tool-trigger-filtered {
+  border-color: color-mix(in srgb, var(--primary) 26%, transparent);
+}
+
+.archive-tool-trigger-active {
+  color: var(--primary);
+  box-shadow:
+    0 12px 24px rgba(89, 46, 32, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.78);
+}
+
+.archive-tool-trigger-breathing {
+  animation: archive-tool-breathe 4.8s ease-in-out infinite;
+}
+
+.archive-filter-indicator {
+  position: absolute;
+  right: 0.32rem;
+  top: 0.32rem;
+  height: 0.36rem;
+  width: 0.36rem;
+  border-radius: 999px;
+  background: var(--primary);
+  box-shadow: 0 0 0 2px var(--background);
+}
+
+.archive-search-dialog,
+.archive-filter-dialog {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.8rem);
+  z-index: 24;
+  width: min(24rem, calc(100vw - 2rem));
+}
+
+.archive-dialog-panel {
+  padding: 1rem;
+  border-radius: 1.5rem;
+  border-color: color-mix(in srgb, var(--primary) 22%, var(--line));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--surface-strong) 97%, transparent), color-mix(in srgb, var(--surface) 99%, transparent)),
+    radial-gradient(circle at top right, rgba(255, 217, 125, 0.24), transparent 34%);
+  box-shadow:
+    0 30px 62px rgba(89, 46, 32, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.82);
+}
+
+.archive-dialog-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.archive-dialog-eyebrow {
+  color: var(--muted-foreground);
+  font-size: 0.65rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.archive-dialog-title {
+  margin-top: 0.25rem;
+  color: var(--foreground);
+  font-family: var(--font-heading), sans-serif;
+  font-size: 1.2rem;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+}
+
+.archive-dialog-copy {
+  margin-top: 0.45rem;
+  max-width: 18rem;
+  color: var(--muted-foreground);
+  font-size: 0.88rem;
+  line-height: 1.65;
+}
+
+.archive-dialog-close {
+  display: inline-flex;
+  height: 2.25rem;
+  width: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  color: var(--muted-foreground);
+  transition:
+    transform 180ms ease,
+    color 180ms linear,
+    background 180ms ease;
+}
+
+.archive-dialog-close:hover {
+  transform: translateY(-1px);
+  color: var(--primary);
+}
+
+.archive-dialog-field {
+  margin-top: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  border-radius: 1.15rem;
+  border: 1px solid color-mix(in srgb, var(--primary) 10%, var(--line-soft));
+  background: color-mix(in srgb, var(--surface-strong) 86%, transparent);
+  padding: 0.95rem 1rem;
+  box-shadow: var(--shadow-near);
+}
+
+.archive-dialog-input {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--foreground);
+  outline: none;
+}
+
+.archive-dialog-input::placeholder {
+  color: var(--muted-foreground);
+}
+
+.archive-dialog-actions {
+  margin-top: 1rem;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.7rem;
+}
+
+.archive-dialog-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 999px;
+  padding: 0.7rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  transition:
+    transform 180ms ease,
+    color 180ms linear,
+    background 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.archive-dialog-action:hover {
+  transform: translateY(-1px);
+}
+
+.archive-dialog-action-ghost {
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  color: var(--foreground);
+}
+
+.archive-dialog-action-primary {
+  background: linear-gradient(90deg, var(--primary), var(--primary-strong));
+  color: white;
+  box-shadow: 0 14px 28px rgba(172, 42, 31, 0.18);
+}
+
+.archive-filter-grid {
+  margin-top: 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.archive-dialog-chip {
+  border: 0;
+  border-radius: 999px;
+  padding: 0.7rem 1rem;
+  font-size: 0.92rem;
+  font-weight: 700;
+  transition:
+    transform 180ms ease,
+    color 180ms linear,
+    background 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.archive-dialog-chip:hover {
+  transform: translateY(-1px);
+}
+
+.archive-dialog-chip-idle {
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  color: var(--muted-foreground);
+}
+
+.archive-dialog-chip-idle:hover {
+  color: var(--primary);
+}
+
+.archive-dialog-chip-active {
+  background: linear-gradient(90deg, var(--primary), var(--primary-strong));
+  color: white;
+  box-shadow: 0 14px 28px rgba(172, 42, 31, 0.2);
+}
+
+html[data-theme="dark"] .archive-tool-trigger {
+  color: #f6f1e8;
+  box-shadow:
+    0 10px 20px rgba(0, 0, 0, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+html[data-theme="dark"] .archive-tool-trigger-active,
+html[data-theme="dark"] .archive-tool-trigger-filtered {
+  border-color: rgba(255, 208, 143, 0.34);
+  color: #ffd08f;
+}
+
+html[data-theme="dark"] .archive-tool-trigger-breathing {
+  animation-name: archive-tool-breathe-dark;
+}
+
+html[data-theme="dark"] .archive-filter-indicator {
+  background: #ffd08f;
+  box-shadow: 0 0 0 2px #11161c;
+}
+
+html[data-theme="dark"] .archive-dialog-panel {
+  border-color: rgba(255, 208, 143, 0.3);
+  background:
+    linear-gradient(180deg, rgba(24, 31, 39, 0.992), rgba(18, 24, 31, 0.972)),
+    radial-gradient(circle at top right, rgba(255, 208, 143, 0.22), transparent 36%);
+  box-shadow:
+    0 30px 66px rgba(0, 0, 0, 0.46),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+html[data-theme="dark"] .archive-dialog-close {
+  background: color-mix(in srgb, var(--surface-elevated) 84%, transparent);
+  color: #cdc3b5;
+}
+
+html[data-theme="dark"] .archive-dialog-field {
+  border-color: rgba(255, 208, 143, 0.16);
+  background: color-mix(in srgb, var(--surface-elevated) 88%, transparent);
+}
+
+html[data-theme="dark"] .archive-dialog-action-ghost,
+html[data-theme="dark"] .archive-dialog-chip-idle {
+  background: color-mix(in srgb, var(--surface-elevated) 86%, transparent);
+  color: #cdc3b5;
+}
+
 .animate-soft-float {
   animation: soft-float 7.5s ease-in-out infinite;
 }
@@ -2517,5 +2848,37 @@ html[data-theme="dark"] .prose-sunset pre {
 
   .editor-asset-grid {
     grid-template-columns: 1fr;
+  }
+
+  .archive-toolbar {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .archive-search-dialog,
+  .archive-filter-dialog {
+    left: 0;
+    right: auto;
+    width: min(22rem, calc(100vw - 1.7rem));
+  }
+
+  .archive-dialog-panel {
+    padding: 0.95rem;
+  }
+
+  .archive-dialog-head {
+    gap: 0.6rem;
+  }
+
+  .archive-dialog-title {
+    font-size: 1.08rem;
+  }
+
+  .archive-dialog-actions {
+    flex-wrap: wrap;
+  }
+
+  .archive-dialog-action {
+    flex: 1 1 calc(50% - 0.35rem);
   }
 }

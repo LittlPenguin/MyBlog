@@ -6,11 +6,13 @@ import {
   DetailRelatedSection,
 } from "@/components/site/detail-shell";
 import { buildDetailMetaChips, resolveDetailSummary } from "@/lib/detail-shell";
+import { buildArchiveHref, type ArchiveFilters } from "@/lib/posts-shared";
 import { getAdjacentPosts, getPostBySlug, getPostSlugs } from "@/lib/posts";
 import { formatDate } from "@/lib/utils";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<ArchiveFilters>;
 };
 
 export async function generateStaticParams() {
@@ -39,8 +41,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-export default async function PostPage({ params }: PageProps) {
+export default async function PostPage({ params, searchParams }: PageProps) {
   const { slug } = await params;
+  const filters = await searchParams;
   const post = await getPostBySlug(slug).catch(() => null);
 
   if (!post) {
@@ -61,7 +64,14 @@ export default async function PostPage({ params }: PageProps) {
 
   return (
     <DetailPageShell
-      backLink={<DetailBackLink href="/archive" label="返回归档" transitionKey="back-archive" />}
+      backLink={
+        <DetailBackLink
+          href={buildArchiveHref(filters)}
+          preserveScroll
+          label="返回归档"
+          transitionKey="back-archive"
+        />
+      }
       eyebrow={
         <>
           <span className="resource-detail-chip-dot" aria-hidden="true" />
