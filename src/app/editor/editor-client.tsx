@@ -13,6 +13,7 @@ import {
   normalizeSlug,
   normalizeTags,
   prepareEditorSubmitPayload,
+  validateEditorDraft,
   type EditorDraft,
   type EditorDraftSource,
   type EditorFieldErrors,
@@ -24,39 +25,50 @@ import { EditorComposePanel } from "./editor-sections";
 
 type EditorStatus = "idle" | "saving" | "saved" | "error";
 
+type EditorClientProps = {
+  initialDraft?: EditorDraft | null;
+  initialSource?: EditorDraftSource | null;
+  initialMessage?: string | null;
+};
+
 const DEFAULT_AUTO_SYNC_SLUG = true;
 const DEFAULT_IMPORT_FRONTMATTER = true;
 const DEFAULT_MODE: EditorMode = "edit";
 
 function createAssetSummaryLabel(draft: EditorDraft) {
   if (draft.assets.length === 0) {
-    return "尚未加入资源文件。";
+    return "No assets yet.";
   }
 
   const imageCount = draft.assets.filter((asset) => describeAsset(asset).kind === "image").length;
   const fileCount = draft.assets.length - imageCount;
 
   if (imageCount > 0 && fileCount > 0) {
-    return `已加入 ${imageCount} 张图片与 ${fileCount} 个文件。`;
+    return `${imageCount} images and ${fileCount} files attached.`;
   }
 
   if (imageCount > 0) {
-    return `已加入 ${imageCount} 张图片资源。`;
+    return `${imageCount} images attached.`;
   }
 
-  return `已加入 ${fileCount} 个文件资源。`;
+  return `${fileCount} files attached.`;
 }
 
-export function EditorClient() {
+export function EditorClient({
+  initialDraft = null,
+  initialSource = null,
+  initialMessage = null,
+}: EditorClientProps) {
   const router = useRouter();
-  const [draft, setDraft] = useState<EditorDraft>(() => buildInitialDraft());
-  const [draftSource, setDraftSource] = useState<EditorDraftSource | null>(null);
-  const [isSlugTouched, setIsSlugTouched] = useState(false);
+  const [draft, setDraft] = useState<EditorDraft>(() => initialDraft ?? buildInitialDraft());
+  const [draftSource, setDraftSource] = useState<EditorDraftSource | null>(initialSource);
+  const [isSlugTouched, setIsSlugTouched] = useState(() => (initialDraft ? isSlugCustom(initialDraft) : false));
   const [mode, setMode] = useState<EditorMode>(DEFAULT_MODE);
   const [tagInput, setTagInput] = useState("");
   const [status, setStatus] = useState<EditorStatus>("idle");
-  const [message, setMessage] = useState("编辑器已准备就绪。");
+  const [message, setMessage] = useState(initialMessage ?? "Editor ready.");
   const [errors, setErrors] = useState<EditorFieldErrors>({});
+  const [isDeleting, setIsDeleting] = useState(false);
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const coverInputRef = useRef<HTMLInputElement | null>(null);
   const assetInputRef = useRef<HTMLInputElement | null>(null);
@@ -97,12 +109,12 @@ export function EditorClient() {
     unregisterObjectUrl(currentDraft.cover?.previewUrl ?? null);
   }
 
-  function updateDraft<K extends keyof EditorDraft>(key: K, value: EditorDraft[K]) {
-    setDraft((current) => ({
-      ...current,
-      [key]: value,
-    }));
+  function clearObjectBackedFiles() {
+    coverFileRef.current = null;
+    assetFileMapRef.current = new Map();
+  }
 
+  function updateErrorsForKey(key: keyof EditorDraft | keyof EditorFieldErrors) {
     setErrors((current) => {
       if (!current[key]) {
         return current;
@@ -112,20 +124,27 @@ export function EditorClient() {
       delete next[key];
       return next;
     });
+  }
 
+  function updateDraft<K extends keyof EditorDraft>(key: K, value: EditorDraft[K]) {
+    setDraft((current) => ({
+      ...current,
+      [key]: value,
+    }));
+
+    updateErrorsForKey(key);
     setStatus("idle");
   }
 
   function applyPersistedDraft(nextDraft: EditorDraft, source: EditorDraftSource | null) {
     clearBlobAssetsFromDraft(draft);
-    coverFileRef.current = null;
-    assetFileMapRef.current = new Map();
+    clearObjectBackedFiles();
     setDraft(nextDraft);
     setDraftSource(source);
     setIsSlugTouched(isSlugCustom(nextDraft));
     setErrors({});
     setStatus("saved");
-    setMessage("已同步最新发布内容。");
+    setMessage("Content synced.");
   }
 
   function handleTitleChange(value: string) {
@@ -160,6 +179,16 @@ export function EditorClient() {
         [key]: value,
       },
     }));
+
+    if (key === "href") {
+      updateErrorsForKey("projectHref");
+    }
+    if (key === "github") {
+      updateErrorsForKey("projectGithub");
+    }
+    if (key === "docs") {
+      updateErrorsForKey("projectDocs");
+    }
     setStatus("idle");
   }
 
@@ -174,6 +203,25 @@ export function EditorClient() {
         [key]: value,
       },
     }));
+
+    if (key === "url") {
+      updateErrorsForKey("resourceUrl");
+    }
+    if (key === "topic") {
+      updateErrorsForKey("resourceTopic");
+    }
+    setStatus("idle");
+  }
+
+  function updateArchiveTopic(value: string) {
+    setDraft((current) => ({
+      ...current,
+      archiveMeta: {
+        ...current.archiveMeta,
+        topic: value,
+      },
+    }));
+    updateErrorsForKey("archiveTopic");
     setStatus("idle");
   }
 
@@ -220,10 +268,10 @@ export function EditorClient() {
       setIsSlugTouched(isSlugCustom(imported));
       setErrors({});
       setStatus("saved");
-      setMessage(`已导入 ${file.name}，草稿内容已更新。`);
+      setMessage(`Imported ${file.name}.`);
     } catch {
       setStatus("error");
-      setMessage("Markdown 导入失败，文件内容无法解析。");
+      setMessage("Markdown import failed.");
     }
   }
 
@@ -234,7 +282,7 @@ export function EditorClient() {
 
     if (!isImageEditorFile(file)) {
       setStatus("error");
-      setMessage("封面仅支持图片文件，请重新选择 PNG、JPG、WEBP 等图片格式。");
+      setMessage("Cover must be an image file.");
       return;
     }
 
@@ -252,7 +300,7 @@ export function EditorClient() {
     coverFileRef.current = file;
 
     setStatus("saved");
-    setMessage(`封面已替换为 ${file.name}。`);
+    setMessage(`Cover updated: ${file.name}.`);
   }
 
   function clearCover() {
@@ -265,7 +313,7 @@ export function EditorClient() {
     });
     coverFileRef.current = null;
     setStatus("saved");
-    setMessage("封面已移除。");
+    setMessage("Cover removed.");
   }
 
   function handleAssetSelection(files: FileList | null) {
@@ -283,7 +331,7 @@ export function EditorClient() {
 
     updateDraft("assets", [...draft.assets, ...nextAssets]);
     setStatus("saved");
-    setMessage(`已加入 ${nextAssets.length} 个资源文件。`);
+    setMessage(`${nextAssets.length} assets added.`);
   }
 
   function removeAsset(assetId: string) {
@@ -300,36 +348,7 @@ export function EditorClient() {
       assets: current.assets.filter((entry) => entry.id !== assetId),
     }));
     setStatus("saved");
-    setMessage(`已移除资源 ${asset.name}。`);
-  }
-
-  function validatePayload(payload: ReturnType<typeof prepareEditorSubmitPayload> & { source: EditorDraftSource | null }) {
-    const nextErrors: EditorFieldErrors = {};
-
-    if (!payload.title.trim()) {
-      nextErrors.title = "请输入文章标题。";
-    }
-
-    if (!payload.slug.trim()) {
-      nextErrors.slug = "请输入文章 slug。";
-    }
-
-    if (!payload.summary.trim()) {
-      nextErrors.summary = "请输入文章摘要。";
-    }
-
-    if (!payload.content.trim()) {
-      nextErrors.content = "请输入正文内容。";
-    }
-
-    if (
-      payload.scheduleAt &&
-      Number.isNaN(Date.parse(payload.scheduleAt.includes("T") ? payload.scheduleAt : payload.scheduleAt.replace(" ", "T")))
-    ) {
-      nextErrors.scheduleAt = "请输入有效的发布时间。";
-    }
-
-    return nextErrors;
+    setMessage(`Removed ${asset.name}.`);
   }
 
   async function handleSubmit() {
@@ -337,18 +356,18 @@ export function EditorClient() {
       ...prepareEditorSubmitPayload(draft),
       source: draftSource,
     };
-    const fieldErrors = validatePayload(payload);
+    const fieldErrors = validateEditorDraft(payload);
 
     if (Object.keys(fieldErrors).length > 0) {
       setErrors(fieldErrors);
       setStatus("error");
-      setMessage("发布失败，请先修正必填字段。");
+      setMessage("Please fix the highlighted fields before publishing.");
       return;
     }
 
     setErrors({});
     setStatus("saving");
-    setMessage("正在发送发布请求...");
+    setMessage("Publishing...");
 
     try {
       const formData = new FormData();
@@ -375,18 +394,53 @@ export function EditorClient() {
       if (!response.ok || !result.ok) {
         setStatus("error");
         setErrors(result.ok ? {} : (result.errors ?? {}));
-        setMessage(result.message || "发布请求失败。");
+        setMessage(result.message || "Publish failed.");
         return;
       }
 
-      coverFileRef.current = null;
-      assetFileMapRef.current = new Map();
       applyPersistedDraft(result.draft, result.source);
       setMessage(result.message);
       router.push(buildEditorDetailHref(result.category, result.slug));
     } catch {
       setStatus("error");
-      setMessage("网络错误，发布请求未完成。");
+      setMessage("Network error while publishing.");
+    }
+  }
+
+  async function handleDelete() {
+    if (!draftSource) {
+      return;
+    }
+
+    setIsDeleting(true);
+    setStatus("saving");
+    setMessage("Deleting content...");
+
+    try {
+      const response = await fetch("/editor/api/posts", {
+        method: "DELETE",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          source: draftSource,
+        }),
+      });
+
+      const result = (await response.json()) as { ok: boolean; message: string; redirectTo?: string };
+
+      if (!response.ok || !result.ok) {
+        setStatus("error");
+        setMessage(result.message || "Delete failed.");
+        return;
+      }
+
+      router.push(result.redirectTo ?? "/archive");
+    } catch {
+      setStatus("error");
+      setMessage("Network error while deleting.");
+    } finally {
+      setIsDeleting(false);
     }
   }
 
@@ -426,6 +480,7 @@ export function EditorClient() {
       <section className="editor-main">
         <EditorComposePanel
           draft={draft}
+          draftSource={draftSource}
           mode={mode}
           errors={errors}
           status={status}
@@ -437,6 +492,7 @@ export function EditorClient() {
           importInputRef={importInputRef}
           coverInputRef={coverInputRef}
           assetInputRef={assetInputRef}
+          isDeleting={isDeleting}
           onTitleChange={handleTitleChange}
           onSlugChange={handleSlugChange}
           onSummaryChange={(value) => updateDraft("summary", value)}
@@ -445,6 +501,8 @@ export function EditorClient() {
             setDraft((current) => applyEditorCategoryChange({ draft: current, nextCategory: value }))
           }
           onScheduleChange={(value) => updateDraft("scheduleAt", value)}
+          onFeaturedChange={(value) => updateDraft("featured", value)}
+          onArchiveTopicChange={updateArchiveTopic}
           onProjectMetaChange={updateProjectMeta}
           onResourceMetaChange={updateResourceMeta}
           onTagInputChange={setTagInput}
@@ -452,6 +510,7 @@ export function EditorClient() {
           onTagRemove={removeTag}
           onToggleMode={() => setMode((current) => (current === "edit" ? "preview" : "edit"))}
           onSubmit={handleSubmit}
+          onDelete={handleDelete}
           onClearCover={clearCover}
           onRemoveAsset={removeAsset}
         />

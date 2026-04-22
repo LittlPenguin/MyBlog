@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import * as detailShellLib from "./detail-shell.ts";
 import {
   buildDetailMetaChips,
   buildDetailAttachmentItems,

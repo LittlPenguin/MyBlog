@@ -44,6 +44,46 @@ export type EditorSubmitPayload = EditorDraft & {
   source?: EditorDraftSource | null;
 };
 
+function isAbsoluteHttpUrl(value: string) {
+  if (!value) {
+    return false;
+  }
+
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+function isRenderableExternalUrl(value: string) {
+  if (!isAbsoluteHttpUrl(value)) {
+    return false;
+  }
+
+  try {
+    const url = new URL(value);
+    const normalizedPath = url.pathname.replace(/\/+$/, "") || "/";
+
+    if ((url.hostname === "github.com" || url.hostname === "www.github.com") && normalizedPath === "/") {
+      return false;
+    }
+
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function readArchiveTopic(meta: Partial<EditorArchiveMeta> | undefined) {
+  return typeof meta?.topic === "string" ? meta.topic : "";
+}
+
+function readResourceTopic(meta: Partial<EditorResourceMeta> | undefined) {
+  return typeof meta?.topic === "string" ? meta.topic : "";
+}
+
 export function buildEditorDetailHref(category: EditorCategory, slug: string) {
   const normalizedSlug = normalizeSlug(slug);
 
@@ -59,6 +99,13 @@ export function buildEditorDetailHref(category: EditorCategory, slug: string) {
       return exhaustiveCheck;
     }
   }
+}
+
+export function buildEditorLoadHref(category: EditorCategory, slug: string) {
+  const params = new URLSearchParams();
+  params.set("category", category);
+  params.set("slug", normalizeSlug(slug));
+  return `/editor?${params.toString()}`;
 }
 
 type DeriveEditorDraftOptions = {
@@ -154,11 +201,14 @@ export function createEmptyResourceMeta(): EditorResourceMeta {
     rating: 4,
     monogram: "",
     accent: "primary",
+    topic: "",
   };
 }
 
 export function createEmptyArchiveMeta(): EditorArchiveMeta {
-  return {};
+  return {
+    topic: "",
+  };
 }
 
 export function createEmptyEditorDraft(
@@ -172,6 +222,7 @@ export function createEmptyEditorDraft(
     category: partial.category ?? "archive",
     tags: [],
     scheduleAt: null,
+    featured: false,
     projectMeta: createEmptyProjectMeta(),
     resourceMeta: createEmptyResourceMeta(),
     archiveMeta: createEmptyArchiveMeta(),
@@ -282,6 +333,7 @@ function initializeCategoryMeta(draft: EditorDraft, nextCategory: EditorCategory
       resourceMeta: {
         ...draft.resourceMeta,
         monogram: draft.resourceMeta.monogram || draft.title.trim().slice(0, 2).toUpperCase(),
+        topic: draft.resourceMeta.topic || draft.archiveMeta.topic,
       },
     };
   }
@@ -478,6 +530,34 @@ export function validateEditorDraft(draft: EditorDraft): EditorFieldErrors {
     }
   }
 
+  if (draft.category === "archive" && !readArchiveTopic(draft.archiveMeta).trim()) {
+    errors.archiveTopic = "Please enter an archive topic.";
+  }
+
+  if (draft.category === "resource") {
+    if (!readResourceTopic(draft.resourceMeta).trim()) {
+      errors.resourceTopic = "Please enter a resource topic.";
+    }
+
+    if (draft.resourceMeta.url.trim() && !isAbsoluteHttpUrl(draft.resourceMeta.url.trim())) {
+      errors.resourceUrl = "Resource URL must be an absolute http/https link.";
+    }
+  }
+
+  if (draft.category === "project") {
+    if (draft.projectMeta.href.trim() && !isRenderableExternalUrl(draft.projectMeta.href.trim())) {
+      errors.projectHref = "Website URL must be an absolute public http/https link.";
+    }
+
+    if (draft.projectMeta.github.trim() && !isRenderableExternalUrl(draft.projectMeta.github.trim())) {
+      errors.projectGithub = "GitHub URL must be an absolute public http/https link.";
+    }
+
+    if (draft.projectMeta.docs.trim() && !isRenderableExternalUrl(draft.projectMeta.docs.trim())) {
+      errors.projectDocs = "Docs URL must be an absolute public http/https link.";
+    }
+  }
+
   return errors;
 }
 
@@ -490,6 +570,7 @@ export function prepareEditorSubmitPayload(draft: EditorDraft): EditorSubmitPayl
     content: draft.content.replace(/\r\n/g, "\n"),
     tags: normalizeTags(draft.tags),
     scheduleAt: normalizeScheduleAt(draft.scheduleAt),
+    featured: Boolean(draft.featured),
     projectMeta: {
       href: trimOrEmpty(draft.projectMeta.href),
       github: trimOrEmpty(draft.projectMeta.github),
@@ -504,8 +585,11 @@ export function prepareEditorSubmitPayload(draft: EditorDraft): EditorSubmitPayl
       rating: normalizeRating(draft.resourceMeta.rating),
       monogram: normalizeMonogram(draft.resourceMeta.monogram),
       accent: draft.resourceMeta.accent,
+      topic: trimOrEmpty(readResourceTopic(draft.resourceMeta)),
     },
-    archiveMeta: draft.archiveMeta,
+    archiveMeta: {
+      topic: trimOrEmpty(readArchiveTopic(draft.archiveMeta)),
+    },
     cover: draft.cover
       ? {
           name: draft.cover.name,
@@ -563,8 +647,13 @@ export function deriveEditorDraftFromMarkdown(source: string, options: DeriveEdi
 
   const projectMeta = createEmptyProjectMeta();
   const resourceMeta = createEmptyResourceMeta();
+  const archiveMeta = createEmptyArchiveMeta();
+  let featured = false;
 
   if (preferFrontmatter) {
+    if (typeof data.featured === "boolean") {
+      featured = data.featured;
+    }
     if (typeof data.href === "string") {
       projectMeta.href = data.href.trim();
     }
@@ -595,6 +684,14 @@ export function deriveEditorDraftFromMarkdown(source: string, options: DeriveEdi
     if (typeof data.monogram === "string") {
       resourceMeta.monogram = normalizeMonogram(data.monogram);
     }
+    if (typeof data.category === "string") {
+      if (category === "archive") {
+        archiveMeta.topic = data.category.trim();
+      }
+      if (category === "resource") {
+        resourceMeta.topic = data.category.trim();
+      }
+    }
   }
 
   return {
@@ -605,8 +702,10 @@ export function deriveEditorDraftFromMarkdown(source: string, options: DeriveEdi
     content,
     category,
     tags,
+    featured,
     projectMeta,
     resourceMeta,
+    archiveMeta,
   };
 }
 

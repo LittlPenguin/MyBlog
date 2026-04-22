@@ -10,6 +10,31 @@ export type DetailAttachmentItem = {
   meta?: string | null;
 };
 
+export function isRenderableExternalHref(href: string) {
+  const trimmed = href.trim();
+
+  if (!trimmed) {
+    return false;
+  }
+
+  try {
+    const url = new URL(trimmed);
+
+    if (url.protocol !== "http:" && url.protocol !== "https:") {
+      return false;
+    }
+
+    const normalizedPath = url.pathname.replace(/\/+$/, "") || "/";
+    if ((url.hostname === "github.com" || url.hostname === "www.github.com") && normalizedPath === "/") {
+      return false;
+    }
+
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function buildDetailMetaChips(values: Array<string | null | undefined>) {
   return values.map((value) => value?.trim() ?? "").filter(Boolean);
 }
@@ -41,11 +66,13 @@ export function buildDetailAttachmentItems(
 }
 
 export function renderDetailHeroActionAttrs(items: DetailActionItem[]) {
-  return items.map((item) => ({
-    ...item,
-    target: "_blank",
-    rel: "noreferrer",
-  }));
+  return items
+    .filter((item) => isRenderableExternalHref(item.href))
+    .map((item) => ({
+      ...item,
+      target: "_blank",
+      rel: "noreferrer",
+    }));
 }
 
 export function normalizeDetailAttachments(items: DetailAttachmentItem[]) {

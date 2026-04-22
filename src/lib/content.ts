@@ -6,6 +6,7 @@ import type {
   ProjectContentFrontmatter,
   ResourceContentFrontmatter,
 } from "./content-shared";
+import { findContentFileBySlug } from "./content-slug.js";
 import type { EditorCategory, EditorDraft, EditorDraftSource, EditorFieldErrors } from "./editor-shared";
 import {
   buildAttachmentAssetReference,
@@ -45,6 +46,11 @@ type PersistedEditorAssets = {
     name: string;
     path: string | null;
   }>;
+};
+
+export type PersistedEditorDraftResult = {
+  draft: EditorDraft;
+  source: EditorDraftSource;
 };
 
 export type EditorWriteValidationResult =
@@ -134,16 +140,23 @@ export function createBaseContentFrontmatter(
     })),
   },
 ): BaseContentFrontmatter {
+  const archiveTopic = payload.archiveMeta?.topic ?? "";
+  const resourceTopic = payload.resourceMeta?.topic ?? "";
   const base: BaseContentFrontmatter = {
     title: payload.title,
     slug: payload.slug,
     summary: payload.summary,
     description: payload.summary,
     date: resolvePublishDate(payload.scheduleAt, now),
-    category: CATEGORY_LABELS[payload.category],
+    category:
+      payload.category === "archive"
+        ? archiveTopic || CATEGORY_LABELS.archive
+        : payload.category === "resource"
+          ? resourceTopic || CATEGORY_LABELS.resource
+          : CATEGORY_LABELS.project,
     tags: payload.tags,
     cover: persistedAssets.coverPath ?? undefined,
-    featured: false,
+    featured: payload.featured ?? false,
     assetNames: persistedAssets.assetEntries.map((entry) => entry.name),
     assetPaths: persistedAssets.assetEntries
       .map((entry) => entry.path)
@@ -380,10 +393,7 @@ export function createPersistedEditorDraft({
   slug: string;
   frontmatter: BaseContentFrontmatter;
   content: string;
-}): {
-  draft: EditorDraft;
-  source: EditorDraftSource;
-} {
+}): PersistedEditorDraftResult {
   const assetNames = frontmatter.assetNames ?? [];
   const assetPaths = frontmatter.assetPaths ?? [];
 
@@ -397,6 +407,7 @@ export function createPersistedEditorDraft({
       category,
       tags: frontmatter.tags,
       scheduleAt: inferDraftScheduleAt(frontmatter.date),
+      featured: frontmatter.featured,
       projectMeta: {
         href: "href" in frontmatter && typeof frontmatter.href === "string" ? frontmatter.href : "",
         github: "github" in frontmatter && typeof frontmatter.github === "string" ? frontmatter.github : "",
@@ -430,8 +441,11 @@ export function createPersistedEditorDraft({
             frontmatter.accent === "tertiary")
             ? frontmatter.accent
             : "primary",
+        topic: category === "resource" ? frontmatter.category : "",
       },
-      archiveMeta: {},
+      archiveMeta: {
+        topic: category === "archive" ? frontmatter.category : "",
+      },
       cover: frontmatter.cover
         ? buildCoverAssetReference(path.basename(frontmatter.cover), frontmatter.cover, frontmatter.cover)
         : null,
@@ -472,12 +486,71 @@ export async function validateEditorWriteTarget({
   }
 }
 
+export async function getPersistedEditorDraftBySource({
+  rootDir,
+  category,
+  slug,
+}: {
+  rootDir: string;
+  category: EditorCategory;
+  slug: string;
+}): Promise<PersistedEditorDraftResult | null> {
+  const directory = path.join(rootDir, getContentDirectoryForCategory(category));
+
+  try {
+    const match = await findContentFileBySlug(directory, slug);
+    if (!match) {
+      return null;
+    }
+
+    const item = await parseContentCollectionItem(match.filePath);
+    return createPersistedEditorDraft({
+      category,
+      slug,
+      frontmatter: item.meta,
+      content: item.content,
+    });
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException)?.code === "ENOENT") {
+      return null;
+    }
+    throw error;
+  }
+}
+
 async function removeFileIfExists(filePath: string) {
   await fs.unlink(filePath).catch((error: NodeJS.ErrnoException) => {
     if (error?.code !== "ENOENT") {
       throw error;
     }
   });
+}
+
+export async function deleteEditorContentFile({
+  rootDir,
+  source,
+}: {
+  rootDir: string;
+  source: EditorDraftSource;
+}) {
+  const directory = path.join(rootDir, getContentDirectoryForCategory(source.originalCategory));
+  const match = await findContentFileBySlug(directory, source.originalSlug);
+  const filePath =
+    match?.filePath ??
+    getAbsoluteContentFilePath({
+      rootDir,
+      category: source.originalCategory,
+      slug: source.originalSlug,
+    });
+  const assetDirectory = getPublicAssetDirectory(source.originalCategory, source.originalSlug);
+
+  await removeFileIfExists(filePath);
+  await removeDirectoryIfExists(assetDirectory);
+
+  return {
+    ok: true,
+    message: "Content deleted.",
+  } as const;
 }
 
 async function writeContentAtPath({
