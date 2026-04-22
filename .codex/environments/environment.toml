@@ -9,3 +9,13 @@ script = ""
 name = "运行"
 icon = "run"
 command = "npm run dev"
+
+[[actions]]
+name = "移动端运行"
+icon = "run"
+command = "npm run dev -- --port 3001"
+
+[[actions]]
+name = "数据运行"
+icon = "run"
+command = "npm run dev -- --port 3002"
