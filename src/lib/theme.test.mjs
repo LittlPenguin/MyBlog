@@ -98,6 +98,27 @@ test("site frame renders the theme toggle as a fixed dock instead of a topbar ac
   assert.match(frameSource, /shell-theme-dock/);
 });
 
+test("site frame defines a dedicated mobile navigation shell instead of reusing the desktop sidebar block", () => {
+  const frameSource = readFileSync(join(process.cwd(), "src/components/site/frame.tsx"), "utf8");
+  const globalStyles = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8");
+
+  assert.match(frameSource, /function MobileNavigation/);
+  assert.match(frameSource, /shell-mobile-nav/);
+  assert.match(frameSource, /shell-mobile-nav-toggle/);
+  assert.match(frameSource, /shell-mobile-nav-panel/);
+  assert.match(frameSource, /shell-mobile-nav-backdrop/);
+  assert.match(frameSource, /setMobileNavOpen/);
+  assert.match(frameSource, /document\.body\.style\.overflow = "hidden"/);
+  assert.match(frameSource, /document\.body\.style\.overflow = ""/);
+  assert.match(globalStyles, /\.shell-mobile-nav/);
+  assert.match(globalStyles, /\.shell-mobile-nav-bar/);
+  assert.match(globalStyles, /\.shell-mobile-nav-toggle/);
+  assert.match(globalStyles, /\.shell-mobile-nav-panel/);
+  assert.match(globalStyles, /\.shell-mobile-nav-backdrop/);
+  assert.match(globalStyles, /\.shell-sidebar,\s*\.loading-sidebar\s*\{\s*display:\s*none;/);
+  assert.match(globalStyles, /\.shell-mobile-nav\s*\{\s*display:\s*block;/);
+});
+
 test("theme toggle keeps a dedicated breathing animation hook for theme switches", () => {
   const toggleSource = readFileSync(join(process.cwd(), "src/components/site/theme-toggle.tsx"), "utf8");
   const globalStyles = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8");
