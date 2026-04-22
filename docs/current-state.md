@@ -89,3 +89,10 @@ This file summarizes the current product state for new Codex sessions and parall
 - `main` should stay clean and reviewable between tasks. Do not use `main` as a scratch worktree.
 - New implementation work starts from the latest committed `main`, usually in a fresh `codex/<topic>` branch or dedicated worktree.
 - Before merge or handoff, rerun `npm test`, `npm run typecheck`, and `npm run build` from WSL in that order.
+
+## Branch Baseline
+
+- Keep `main` as the only long-lived integration branch.
+- Historical branches that are already merged into `main` can be deleted locally after verification.
+- `codex/the-real-article` is the only known local branch that still contains unfinished feature work worth preserving for later review.
+- `codex/data-real-content` and `codex/real-article` should not be used as future baselines for new work.
