@@ -19,6 +19,13 @@ export default function Loading() {
         </aside>
 
         <div className="loading-main">
+          <div className="shell-mobile-nav" aria-hidden="true">
+            <div className="shell-mobile-nav-bar">
+              <div className="loading-mobile-brand" />
+              <div className="loading-mobile-toggle" />
+            </div>
+          </div>
+
           <div className="loading-topbar">
             <div className="loading-topbar-actions">
               <span className="loading-icon" />

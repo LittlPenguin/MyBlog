@@ -1,14 +1,16 @@
 "use client";
 
-import { LayoutGroup, motion, useReducedMotion } from "framer-motion";
+import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from "framer-motion";
 import {
   Archive,
   FolderKanban,
   Home,
   LibraryBig,
+  Menu,
   Plus,
   Settings2,
   UserRound,
+  X,
 } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -43,6 +45,10 @@ function isActiveRoute(pathname: string, item: NavItem) {
   return (item.match ?? [item.href]).some((entry) =>
     entry === "/" ? pathname === "/" : pathname === entry || pathname.startsWith(`${entry}/`),
   );
+}
+
+function resolveCurrentNavItem(pathname: string) {
+  return navItems.find((item) => isActiveRoute(pathname, item)) ?? navItems[0];
 }
 
 function SideNavigation() {
@@ -98,6 +104,158 @@ function SideNavigation() {
   );
 }
 
+function MobileNavigation({
+  motionEnabled,
+  mobileNavOpen,
+  setMobileNavOpen,
+}: {
+  motionEnabled: boolean;
+  mobileNavOpen: boolean;
+  setMobileNavOpen: React.Dispatch<React.SetStateAction<boolean>>;
+}) {
+  const pathname = normalizeRoutePathname(usePathname());
+  const currentItem = resolveCurrentNavItem(pathname);
+
+  return (
+    <div className="shell-mobile-nav" data-route-overlay-ignore>
+      <div className="shell-mobile-nav-bar">
+        <RouteLink href="/" transitionKey="mobile-brand-mark" className="shell-mobile-nav-brand">
+          <span className="shell-mobile-nav-brand-mark">YY</span>
+          <span className="shell-mobile-nav-brand-copy">
+            <span className="shell-mobile-nav-brand-name">{siteConfig.name}</span>
+            <span className="shell-mobile-nav-divider" aria-hidden="true" />
+            <span className="shell-mobile-nav-current">
+              <span className="shell-mobile-nav-current-label">{currentItem.label}</span>
+              <span className="shell-mobile-nav-current-eyebrow">{currentItem.eyebrow}</span>
+            </span>
+          </span>
+        </RouteLink>
+
+        <button
+          type="button"
+          className={cn("shell-mobile-nav-toggle", mobileNavOpen && "shell-mobile-nav-toggle-active")}
+          aria-expanded={mobileNavOpen}
+          aria-controls="shell-mobile-nav-panel"
+          aria-label={mobileNavOpen ? "Close navigation menu" : "Open navigation menu"}
+          onClick={() => setMobileNavOpen((open) => !open)}
+        >
+          <span className="shell-mobile-nav-toggle-icon" aria-hidden="true">
+            {mobileNavOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+          </span>
+        </button>
+      </div>
+
+      <AnimatePresence initial={false}>
+        {mobileNavOpen ? (
+          <>
+            <motion.button
+              key="mobile-nav-backdrop"
+              type="button"
+              className="shell-mobile-nav-backdrop"
+              aria-label="Close navigation menu"
+              data-route-overlay-ignore
+              initial={motionEnabled ? { opacity: 0 } : false}
+              animate={{ opacity: 1 }}
+              exit={motionEnabled ? { opacity: 0 } : undefined}
+              transition={motionEnabled ? { duration: 0.18, ease: [0.22, 1, 0.36, 1] } : undefined}
+              onClick={() => setMobileNavOpen(false)}
+            />
+
+            <motion.div
+              key="mobile-nav-panel"
+              id="shell-mobile-nav-panel"
+              className="shell-mobile-nav-panel"
+              data-route-overlay-ignore
+              initial={
+                motionEnabled
+                  ? {
+                      opacity: 0,
+                      y: -12,
+                      scale: 0.985,
+                      filter: "blur(10px)",
+                    }
+                  : false
+              }
+              animate={{
+                opacity: 1,
+                y: 0,
+                scale: 1,
+                filter: "blur(0px)",
+              }}
+              exit={
+                motionEnabled
+                  ? {
+                      opacity: 0,
+                      y: -10,
+                      scale: 0.988,
+                      filter: "blur(8px)",
+                    }
+                  : undefined
+              }
+              transition={
+                motionEnabled
+                  ? {
+                      duration: 0.24,
+                      ease: [0.22, 1, 0.36, 1],
+                    }
+                  : undefined
+              }
+            >
+              <div className="shell-mobile-nav-panel-head">
+                <div>
+                  <p className="shell-mobile-nav-panel-kicker">Site Menu</p>
+                  <p className="shell-mobile-nav-panel-title">
+                    {currentItem.label}
+                    <span>{currentItem.eyebrow}</span>
+                  </p>
+                </div>
+              </div>
+
+              <nav className="shell-mobile-nav-list">
+                {navItems.map((item) => {
+                  const Icon = resolveNavIcon(item.icon);
+                  const active = isActiveRoute(pathname, item);
+
+                  return (
+                    <RouteLink
+                      key={item.href}
+                      href={item.href}
+                      transitionKey={item.transitionKey}
+                      className={cn("shell-mobile-nav-link", active && "shell-mobile-nav-link-active")}
+                      onClick={() => setMobileNavOpen(false)}
+                    >
+                      <Icon className="relative z-10 h-[18px] w-[18px]" />
+                      <span className="relative z-10 flex items-baseline gap-2">
+                        <span>{item.label}</span>
+                        <span className="font-label text-[10px] uppercase tracking-[0.18em] opacity-80">
+                          {item.eyebrow}
+                        </span>
+                      </span>
+                      {active ? <span className="shell-mobile-nav-pill" aria-hidden="true" /> : null}
+                    </RouteLink>
+                  );
+                })}
+              </nav>
+
+              <RouteLink
+                href="/editor"
+                transitionKey="mobile-nav-editor"
+                className="shell-mobile-nav-editor"
+                onClick={() => setMobileNavOpen(false)}
+              >
+                <span className="theme-surface-ghost inline-flex h-8 w-8 items-center justify-center rounded-full">
+                  <Settings2 className="h-4 w-4" />
+                </span>
+                <span>Markdown Editor</span>
+              </RouteLink>
+            </motion.div>
+          </>
+        ) : null}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 function FloatingAction({ motionEnabled }: { motionEnabled: boolean }) {
   return (
     <motion.div
@@ -116,7 +274,9 @@ function AppFrameInner({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const prefersReducedMotion = useReducedMotion();
   const { activeTransition, phase, setPhase, finishTransition, cancelTransition } = usePageTransition();
+  const normalizedPathname = normalizeRoutePathname(pathname);
   const [mounted, setMounted] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [stageReady, setStageReady] = useState(false);
   const stageRef = useRef<HTMLDivElement | null>(null);
   const settleTimerRef = useRef<number | null>(null);
@@ -145,9 +305,38 @@ function AppFrameInner({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  useEffect(() => {
+    setMobileNavOpen(false);
+  }, [normalizedPathname]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth > 900) {
+        setMobileNavOpen(false);
+      }
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!mobileNavOpen) {
+      document.body.style.overflow = "";
+      return;
+    }
+
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [mobileNavOpen]);
+
   const motionEnabled = mounted && !prefersReducedMotion;
   const routeMotionEnabled = mounted;
-  const normalizedPathname = normalizeRoutePathname(pathname);
   const overlaySnapshot = activeTransition?.snapshot ?? null;
   const overlayVisible = routeMotionEnabled && !!overlaySnapshot;
   const waitingForTarget = !!activeTransition && normalizedPathname !== activeTransition.toPathname;
@@ -240,6 +429,12 @@ function AppFrameInner({ children }: { children: React.ReactNode }) {
           <SideNavigation />
 
           <div className="shell-content">
+            <MobileNavigation
+              motionEnabled={motionEnabled}
+              mobileNavOpen={mobileNavOpen}
+              setMobileNavOpen={setMobileNavOpen}
+            />
+
             <div className="shell-main-wrap">
               <div
                 className={cn("shell-route-meter", activeTransition && "shell-route-meter-active")}
