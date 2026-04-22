@@ -81,3 +81,11 @@ This file summarizes the current product state for new Codex sessions and parall
 - `main` is the active baseline. Old Codex branches should not be used to infer the current state.
 - `npm run build` may still show an existing Turbopack tracing warning related to content imports; this is known history and not necessarily caused by the current task.
 - `.codex/` is local workspace state and should not be committed unless explicitly requested.
+
+## Development Baseline
+
+- WSL is the only supported day-to-day development environment for this repo.
+- Use WSL-managed `node` and `npm` via `nvm`; do not rely on Windows PATH shims inside WSL sessions.
+- `main` should stay clean and reviewable between tasks. Do not use `main` as a scratch worktree.
+- New implementation work starts from the latest committed `main`, usually in a fresh `codex/<topic>` branch or dedicated worktree.
+- Before merge or handoff, rerun `npm test`, `npm run typecheck`, and `npm run build` from WSL in that order.

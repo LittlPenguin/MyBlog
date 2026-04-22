@@ -87,3 +87,19 @@ These files affect multiple surfaces and should be treated as shared ownership a
 - `src/lib/transition-stage.ts`
 
 If a task touches one of these files, check whether another agent is already modifying the same subsystem before editing.
+
+## Branch and Review Workflow
+
+- `main` is the only integration branch and the only source of truth for current behavior.
+- New work should branch from the latest committed `main`, preferably in a separate Git worktree.
+- The main worktree in this conversation is the review and integration workspace:
+  - stabilize the baseline
+  - inspect branch diffs
+  - run verification
+  - merge approved work
+- Feature worktrees should own one subsystem at a time and avoid concurrent edits in the high-conflict files above.
+- Merge review priority is:
+  - behavior regressions or broken routes
+  - conflicts with shared shell, theme, content, or transition architecture
+  - missing tests for changed behavior
+  - docs drifting from implementation
