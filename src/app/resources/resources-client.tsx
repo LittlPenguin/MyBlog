@@ -5,8 +5,10 @@ import Image from "next/image";
 import { Search } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { Reveal } from "@/components/motion/reveal";
+import { AdminDeleteButton } from "@/components/site/admin-delete-button";
 import { RouteLink } from "@/components/site/route-link";
 import { GlassPanel, Pill, RatingStars } from "@/components/site/ui";
+import { buildEditorLoadHref } from "@/lib/editor";
 import {
   ALL_RESOURCES_CATEGORY,
   buildResourceDetailHref,
@@ -23,12 +25,14 @@ type ResourcesClientProps = {
   };
   resources: ResourceItem[];
   categories: string[];
+  canManage: boolean;
 };
 
 export function ResourcesClient({
   initialFilters,
   resources,
   categories,
+  canManage,
 }: ResourcesClientProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -80,7 +84,7 @@ export function ResourcesClient({
             收藏 / Resources
           </h1>
           <p className="mt-3 text-sm leading-7 text-muted-foreground md:text-base">
-            经过筛选后留下的设计资源、工具与参考，并通过站内详情页承接外部跳转，避免返回时重新灰屏加载。
+            经过筛选后留下的设计资源、工具与参考，并通过站内详情页承接外部跳转。
           </p>
 
           <div className="relative mx-auto mt-6 max-w-2xl">
@@ -124,12 +128,12 @@ export function ResourcesClient({
       <section className="editorial-grid md:grid-cols-2 xl:grid-cols-3">
         {filteredResources.map((resource, index) => (
           <Reveal key={resource.slug} delay={0.04 * (index + 1)}>
-            <RouteLink
-              href={buildResourceDetailHref(resource.slug, currentFilters)}
-              transitionKey={`resource-${resource.slug}`}
-              className="block h-full"
-            >
-              <GlassPanel className="resource-card-shell flex h-full flex-col p-6">
+            <GlassPanel className="resource-card-shell flex h-full flex-col p-6">
+              <RouteLink
+                href={buildResourceDetailHref(resource.slug, currentFilters)}
+                transitionKey={`resource-${resource.slug}`}
+                className="block"
+              >
                 <div className="flex items-start justify-between gap-4">
                   {resource.cover ? (
                     <div className="theme-surface h-20 w-28 overflow-hidden rounded-[22px]">
@@ -156,14 +160,36 @@ export function ResourcesClient({
                   {resource.url.replace(/^https?:\/\//, "")}
                 </span>
                 <p className="mt-4 flex-1 text-sm leading-7 text-muted-foreground">{resource.description}</p>
-                <div className="mt-5 flex flex-wrap gap-2">
+              </RouteLink>
+              <div className="mt-5 flex flex-wrap gap-2">
+                <RouteLink
+                  href={buildResourceDetailHref(resource.slug, currentFilters)}
+                  transitionKey={`resource-${resource.slug}`}
+                  className="theme-surface inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-foreground"
+                >
+                  预览
+                </RouteLink>
+                {canManage ? (
+                  <>
+                    <RouteLink
+                      href={buildEditorLoadHref("resource", resource.slug)}
+                      className="theme-surface inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-primary"
+                    >
+                      编辑
+                    </RouteLink>
+                    <AdminDeleteButton category="resource" slug={resource.slug} variant="inline">
+                      删除
+                    </AdminDeleteButton>
+                  </>
+                ) : null}
+                <div className="flex flex-wrap gap-2">
                   <Pill active>{resource.category}</Pill>
                   {resource.tags.map((tag) => (
                     <Pill key={tag}>{tag}</Pill>
                   ))}
                 </div>
-              </GlassPanel>
-            </RouteLink>
+              </div>
+            </GlassPanel>
           </Reveal>
         ))}
       </section>

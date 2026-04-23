@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import { ArrowUpRight, Boxes, Grid2x2, Sparkles, SquareStack } from "lucide-react";
+import { Boxes, Grid2x2, Sparkles, SquareStack } from "lucide-react";
 import { Reveal } from "@/components/motion/reveal";
+import { AdminDeleteButton } from "@/components/site/admin-delete-button";
 import { RouteLink } from "@/components/site/route-link";
 import { GlassPanel, Pill } from "@/components/site/ui";
+import { isAdminRequest } from "@/lib/admin-auth-server";
+import { buildEditorLoadHref } from "@/lib/editor";
 import { getAllProjects } from "@/lib/projects";
 
 export const metadata: Metadata = {
@@ -38,7 +41,7 @@ function projectIcon(icon: "grid" | "spark" | "pen" | "layers") {
 }
 
 export default async function ProjectsPage() {
-  const projects = await getAllProjects();
+  const [projects, canManage] = await Promise.all([getAllProjects(), isAdminRequest()]);
 
   return (
     <div className="space-y-6 pb-8 pt-2">
@@ -51,7 +54,7 @@ export default async function ProjectsPage() {
             项目作品集<span className="text-primary italic">.</span>
           </h1>
           <p className="max-w-2xl text-sm leading-7 text-muted-foreground md:text-base">
-            暮色与玻璃的气质下面，是长期迭代中的产品判断、前端实现与内容组织实验。
+            暮色与玻璃气质下的长期产品判断、前端实现与内容组织实验。
           </p>
         </section>
       </Reveal>
@@ -62,12 +65,12 @@ export default async function ProjectsPage() {
 
           return (
             <Reveal key={project.slug} delay={0.05 * (index + 1)}>
-              <RouteLink
-                href={`/projects/${project.slug}`}
-                transitionKey={`project-${project.slug}`}
-                className="block h-full"
-              >
-                <GlassPanel className="group flex h-full flex-col justify-between p-6 transition hover:-translate-y-1">
+              <GlassPanel className="group flex h-full flex-col justify-between p-6 transition hover:-translate-y-1">
+                <RouteLink
+                  href={`/projects/${project.slug}`}
+                  transitionKey={`project-${project.slug}`}
+                  className="block"
+                >
                   <div className="space-y-5">
                     <div className="flex items-start justify-between gap-4">
                       {project.cover ? (
@@ -105,27 +108,31 @@ export default async function ProjectsPage() {
                       <p className="mt-4 text-sm leading-7 text-muted-foreground">{project.summary}</p>
                     </div>
                   </div>
+                </RouteLink>
 
-                  <div className="mt-6 flex flex-wrap gap-3">
-                    {project.href ? (
-                      <span className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-primary to-primary-strong px-4 py-2 text-sm font-semibold text-white shadow-[0_16px_32px_rgba(172,42,31,0.18)]">
-                        Website
-                        <ArrowUpRight className="h-4 w-4" />
-                      </span>
-                    ) : null}
-                    {project.github ? (
-                      <span className="theme-surface inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-foreground">
-                        GitHub
-                      </span>
-                    ) : null}
-                    {project.docs ? (
-                      <span className="theme-surface inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-foreground">
-                        Docs
-                      </span>
-                    ) : null}
-                  </div>
-                </GlassPanel>
-              </RouteLink>
+                <div className="mt-6 flex flex-wrap gap-3">
+                  <RouteLink
+                    href={`/projects/${project.slug}`}
+                    transitionKey={`project-${project.slug}`}
+                    className="theme-surface inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-foreground"
+                  >
+                    预览
+                  </RouteLink>
+                  {canManage ? (
+                    <>
+                      <RouteLink
+                        href={buildEditorLoadHref("project", project.slug)}
+                        className="theme-surface inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-primary"
+                      >
+                        编辑
+                      </RouteLink>
+                      <AdminDeleteButton category="project" slug={project.slug} variant="inline">
+                        删除
+                      </AdminDeleteButton>
+                    </>
+                  ) : null}
+                </div>
+              </GlassPanel>
             </Reveal>
           );
         })}

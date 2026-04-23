@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { Reveal } from "@/components/motion/reveal";
 import { GlassPanel, Pill, SoftPanel } from "@/components/site/ui";
+import { isAdminRequest } from "@/lib/admin-auth-server";
 import {
   ALL_POSTS_CATEGORY,
   normalizeArchiveFiltersWithCategories,
@@ -73,11 +74,11 @@ type PageProps = {
 
 async function ArchivePageContent({ searchParams }: PageProps) {
   const resolvedSearchParams = await searchParams;
-  const posts = await getAllPosts();
+  const [posts, canManage] = await Promise.all([getAllPosts(), isAdminRequest()]);
   const categories = [ALL_POSTS_CATEGORY, ...new Set(posts.map((post) => post.category))];
   const filters = normalizeArchiveFiltersWithCategories(resolvedSearchParams, categories);
 
-  return <ArchiveClient initialFilters={filters} posts={posts} categories={categories} />;
+  return <ArchiveClient initialFilters={filters} posts={posts} categories={categories} canManage={canManage} />;
 }
 
 export default function ArchivePage({ searchParams }: PageProps) {

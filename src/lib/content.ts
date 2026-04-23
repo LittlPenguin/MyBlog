@@ -550,6 +550,12 @@ export async function deleteEditorContentFile({
   return {
     ok: true,
     message: "Content deleted.",
+    redirectHref:
+      source.originalCategory === "archive"
+        ? "/archive"
+        : source.originalCategory === "project"
+          ? "/projects"
+          : "/resources",
   } as const;
 }
 
@@ -671,17 +677,24 @@ export async function updateEditorContentFile({
     return writeEditorContentFile({ rootDir, payload, coverUpload, assetUploads, now });
   }
 
-  const originalPath = getAbsoluteContentFilePath({
-    rootDir,
-    category: source.originalCategory,
-    slug: source.originalSlug,
-  });
+  const originalDirectory = path.join(rootDir, getContentDirectoryForCategory(source.originalCategory));
+  const originalMatch = await findContentFileBySlug(originalDirectory, source.originalSlug);
+  const originalPath =
+    originalMatch?.filePath ??
+    getAbsoluteContentFilePath({
+      rootDir,
+      category: source.originalCategory,
+      slug: source.originalSlug,
+    });
 
-  const nextPath = getAbsoluteContentFilePath({
-    rootDir,
-    category: payload.category,
-    slug: payload.slug,
-  });
+  const nextPath =
+    source.originalCategory === payload.category && source.originalSlug === payload.slug
+      ? originalPath
+      : getAbsoluteContentFilePath({
+          rootDir,
+          category: payload.category,
+          slug: payload.slug,
+        });
 
   if (originalPath !== nextPath) {
     const validation = await validateEditorWriteTarget({

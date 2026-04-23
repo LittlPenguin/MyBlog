@@ -1,19 +1,14 @@
 "use client";
 
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import {
-  startTransition,
-  useDeferredValue,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { startTransition, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { BookMarked, Filter, Search } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { Reveal } from "@/components/motion/reveal";
+import { AdminDeleteButton } from "@/components/site/admin-delete-button";
 import { RouteLink } from "@/components/site/route-link";
 import { GlassPanel, Pill, SoftPanel } from "@/components/site/ui";
+import { buildEditorLoadHref } from "@/lib/editor";
 import {
   ALL_POSTS_CATEGORY,
   buildArchiveHref,
@@ -31,6 +26,7 @@ type ArchiveClientProps = {
   };
   posts: PostMeta[];
   categories: string[];
+  canManage: boolean;
 };
 
 type ArchivePanel = "search" | "filter" | null;
@@ -80,7 +76,7 @@ function ArchiveEmptyState() {
   );
 }
 
-export function ArchiveClient({ initialFilters, posts, categories }: ArchiveClientProps) {
+export function ArchiveClient({ initialFilters, posts, categories, canManage }: ArchiveClientProps) {
   const pathname = usePathname();
   const router = useRouter();
   const reduceMotion = useReducedMotion();
@@ -328,10 +324,7 @@ export function ArchiveClient({ initialFilters, posts, categories }: ArchiveClie
 
                 <div className="space-y-4">
                   {group.items.map((post) => (
-                    <SoftPanel
-                      key={`${group.title}-${post.slug}`}
-                      className="p-4 transition hover:-translate-y-0.5"
-                    >
+                    <SoftPanel key={`${group.title}-${post.slug}`} className="p-4 transition hover:-translate-y-0.5">
                       <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
                         {formatDate(post.date)}
                       </p>
@@ -342,6 +335,33 @@ export function ArchiveClient({ initialFilters, posts, categories }: ArchiveClie
                       >
                         {post.title}
                       </RouteLink>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <RouteLink
+                          href={buildPostDetailHref(post.slug, currentFilters)}
+                          transitionKey={`post-preview-${post.slug}`}
+                          className="inline-flex text-xs font-semibold uppercase tracking-[0.16em] text-foreground"
+                        >
+                          预览
+                        </RouteLink>
+                        {canManage ? (
+                          <>
+                            <RouteLink
+                              href={buildEditorLoadHref("archive", post.slug)}
+                              className="inline-flex text-xs font-semibold uppercase tracking-[0.16em] text-primary"
+                            >
+                              编辑
+                            </RouteLink>
+                            <AdminDeleteButton
+                              category="archive"
+                              slug={post.slug}
+                              variant="inline"
+                              className="px-0 py-0 text-xs uppercase tracking-[0.16em]"
+                            >
+                              删除
+                            </AdminDeleteButton>
+                          </>
+                        ) : null}
+                      </div>
                       <p className="mt-2 text-sm leading-7 text-muted-foreground">{post.summary}</p>
                     </SoftPanel>
                   ))}

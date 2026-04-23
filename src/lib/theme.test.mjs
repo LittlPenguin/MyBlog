@@ -214,3 +214,38 @@ test("archive dialogs close only on outside pointer interactions", () => {
   assert.doesNotMatch(archiveClientSource, /onClick=\{\(\) => setOpenPanel\(null\)\}/);
   assert.doesNotMatch(archiveClientSource, /setCategory\(item\)[\s\S]*setOpenPanel\(null\)/);
 });
+
+test("admin delete uses a custom animated confirmation dialog instead of window.confirm", () => {
+  const deleteButtonSource = readFileSync(join(process.cwd(), "src/components/site/admin-delete-button.tsx"), "utf8");
+  const globalStyles = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8");
+
+  assert.doesNotMatch(deleteButtonSource, /window\.confirm/);
+  assert.match(deleteButtonSource, /AnimatePresence/);
+  assert.match(deleteButtonSource, /motion\./);
+  assert.match(deleteButtonSource, /createPortal/);
+  assert.match(deleteButtonSource, /admin-delete-dialog-overlay/);
+  assert.match(deleteButtonSource, /admin-delete-dialog-shell/);
+  assert.match(deleteButtonSource, /admin-delete-dialog-stage/);
+  assert.match(deleteButtonSource, /admin-delete-dialog-panel/);
+  assert.match(deleteButtonSource, /admin-delete-dialog-body/);
+  assert.match(deleteButtonSource, /admin-delete-dialog-warning/);
+  assert.match(deleteButtonSource, /admin-delete-dialog-cancel/);
+  assert.match(deleteButtonSource, /admin-delete-dialog-confirm/);
+  assert.match(deleteButtonSource, /取消/);
+  assert.match(deleteButtonSource, /确认删除/);
+  assert.doesNotMatch(deleteButtonSource, /message && !isOpen/);
+  assert.match(globalStyles, /@keyframes admin-delete-breathe/);
+  assert.match(globalStyles, /@keyframes admin-delete-pop-in/);
+  assert.match(globalStyles, /@keyframes admin-delete-panel-bob/);
+  assert.match(globalStyles, /\.admin-delete-dialog-overlay/);
+  assert.match(globalStyles, /\.admin-delete-dialog-shell/);
+  assert.match(globalStyles, /\.admin-delete-dialog-stage/);
+  assert.match(globalStyles, /\.admin-delete-dialog-panel/);
+  assert.match(globalStyles, /\.admin-delete-dialog-body/);
+  assert.match(globalStyles, /\.admin-delete-dialog-warning/);
+  assert.match(globalStyles, /\.admin-delete-dialog-confirm/);
+  assert.match(globalStyles, /min-height:\s*22rem/);
+  assert.match(globalStyles, /width:\s*min\(34rem, calc\(100vw - 2rem\)\)/);
+  assert.match(globalStyles, /position:\s*fixed/);
+  assert.match(globalStyles, /place-items:\s*center/);
+});

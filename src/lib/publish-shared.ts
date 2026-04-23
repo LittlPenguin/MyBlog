@@ -15,3 +15,14 @@ export type EditorWriteResult =
       message: string;
       errors?: EditorFieldErrors;
     };
+
+export type EditorDeleteResult =
+  | {
+      ok: true;
+      message: string;
+      redirectHref: string;
+    }
+  | {
+      ok: false;
+      message: string;
+    };

@@ -19,7 +19,7 @@ import {
   type EditorFieldErrors,
   type EditorMode,
 } from "@/lib/editor";
-import type { EditorWriteResult } from "@/lib/publish-shared";
+import type { EditorDeleteResult, EditorWriteResult } from "@/lib/publish-shared";
 import { buildInitialDraft, countLines, countWords, describeAsset, isSlugCustom } from "./editor-helpers";
 import { EditorComposePanel } from "./editor-sections";
 
@@ -427,7 +427,7 @@ export function EditorClient({
         }),
       });
 
-      const result = (await response.json()) as { ok: boolean; message: string; redirectTo?: string };
+      const result = (await response.json()) as EditorDeleteResult;
 
       if (!response.ok || !result.ok) {
         setStatus("error");
@@ -435,12 +435,35 @@ export function EditorClient({
         return;
       }
 
-      router.push(result.redirectTo ?? "/archive");
+      router.push(result.redirectHref);
     } catch {
       setStatus("error");
       setMessage("Network error while deleting.");
     } finally {
       setIsDeleting(false);
+    }
+  }
+
+  async function handleLogout() {
+    setStatus("saving");
+    setMessage("Leaving admin mode...");
+
+    try {
+      const response = await fetch("/admin/api/session", {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        setStatus("error");
+        setMessage("Failed to leave admin mode.");
+        return;
+      }
+
+      router.push("/admin");
+      router.refresh();
+    } catch {
+      setStatus("error");
+      setMessage("Failed to leave admin mode.");
     }
   }
 
@@ -501,7 +524,7 @@ export function EditorClient({
             setDraft((current) => applyEditorCategoryChange({ draft: current, nextCategory: value }))
           }
           onScheduleChange={(value) => updateDraft("scheduleAt", value)}
-          onFeaturedChange={(value) => updateDraft("featured", value)}
+          onFeaturedChange={(value: boolean) => updateDraft("featured", value)}
           onArchiveTopicChange={updateArchiveTopic}
           onProjectMetaChange={updateProjectMeta}
           onResourceMetaChange={updateResourceMeta}
@@ -513,6 +536,7 @@ export function EditorClient({
           onDelete={handleDelete}
           onClearCover={clearCover}
           onRemoveAsset={removeAsset}
+          onLogout={handleLogout}
         />
       </section>
     </div>

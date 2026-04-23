@@ -9,10 +9,12 @@ import {
   Globe,
   Link2,
   LoaderCircle,
+  LogOut,
   Send,
   Sparkles,
   Star,
   Tags,
+  Trash2,
   UploadCloud,
   X,
 } from "lucide-react";
@@ -26,6 +28,7 @@ import {
   type EditorAccent,
   type EditorCategory,
   type EditorDraft,
+  type EditorDraftSource,
   type EditorFieldErrors,
   type EditorMode,
   type EditorProjectIcon,
@@ -43,6 +46,7 @@ type EditorStatus = "idle" | "saving" | "saved" | "error";
 
 type ComposePanelProps = {
   draft: EditorDraft;
+  draftSource: EditorDraftSource | null;
   mode: EditorMode;
   errors: EditorFieldErrors;
   status: EditorStatus;
@@ -54,12 +58,15 @@ type ComposePanelProps = {
   importInputRef: RefObject<HTMLInputElement | null>;
   coverInputRef: RefObject<HTMLInputElement | null>;
   assetInputRef: RefObject<HTMLInputElement | null>;
+  isDeleting: boolean;
   onTitleChange: (value: string) => void;
   onSlugChange: (value: string) => void;
   onSummaryChange: (value: string) => void;
   onContentChange: (value: string) => void;
   onCategoryChange: (value: EditorCategory) => void;
   onScheduleChange: (value: string | null) => void;
+  onFeaturedChange: (value: boolean) => void;
+  onArchiveTopicChange: (value: string) => void;
   onProjectMetaChange: <K extends keyof EditorDraft["projectMeta"]>(
     key: K,
     value: EditorDraft["projectMeta"][K],
@@ -73,8 +80,10 @@ type ComposePanelProps = {
   onTagRemove: (tag: string) => void;
   onToggleMode: () => void;
   onSubmit: () => void;
+  onDelete: () => void;
   onClearCover: () => void;
   onRemoveAsset: (assetId: string) => void;
+  onLogout: () => void;
 };
 
 function AccentSelector({
@@ -125,6 +134,7 @@ function ProjectIconSelector({
 
 export function EditorComposePanel({
   draft,
+  draftSource,
   mode,
   errors,
   status,
@@ -136,12 +146,15 @@ export function EditorComposePanel({
   importInputRef,
   coverInputRef,
   assetInputRef,
+  isDeleting,
   onTitleChange,
   onSlugChange,
   onSummaryChange,
   onContentChange,
   onCategoryChange,
   onScheduleChange,
+  onFeaturedChange,
+  onArchiveTopicChange,
   onProjectMetaChange,
   onResourceMetaChange,
   onTagInputChange,
@@ -149,16 +162,22 @@ export function EditorComposePanel({
   onTagRemove,
   onToggleMode,
   onSubmit,
+  onDelete,
   onClearCover,
   onRemoveAsset,
+  onLogout,
 }: ComposePanelProps) {
+  const isBusy = status === "saving";
+  const editorHeading = draftSource ? "编辑现有内容" : "新建内容";
+  const editorSubheading = draftSource ? "Edit Existing Entry" : "Create Post";
+
   return (
     <>
       <div className="editor-header-row">
         <Reveal>
           <div className="editor-header-copy">
             <h2 className="font-heading text-5xl font-black tracking-[-0.08em] text-foreground">
-              新建文章 <span className="text-primary italic">/ Create Post</span>
+              {editorHeading} <span className="text-primary italic">/ {editorSubheading}</span>
             </h2>
           </div>
         </Reveal>
@@ -167,7 +186,7 @@ export function EditorComposePanel({
           <div className="editor-header-actions">
             <button type="button" className="editor-ghost-button" onClick={() => importInputRef.current?.click()}>
               <FileUp className="h-4 w-4" />
-              <span>导入 MD</span>
+              <span>导入 Markdown</span>
             </button>
 
             <button
@@ -183,9 +202,13 @@ export function EditorComposePanel({
               <span>{mode === "preview" ? "返回编辑" : "预览"}</span>
             </button>
 
-            <button type="button" className="editor-primary-button" onClick={onSubmit} disabled={status === "saving"}>
-              {status === "saving" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-              <span>{status === "saving" ? "发布中..." : "发布文章"}</span>
+            <button type="button" className="editor-primary-button" onClick={onSubmit} disabled={isBusy || isDeleting}>
+              {isBusy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              <span>{isBusy ? "发布中..." : "发布内容"}</span>
+            </button>
+            <button type="button" className="editor-ghost-button" onClick={onLogout} disabled={isBusy || isDeleting}>
+              <LogOut className="h-4 w-4" />
+              <span>退出管理员</span>
             </button>
           </div>
         </Reveal>
@@ -195,18 +218,18 @@ export function EditorComposePanel({
         <Reveal className="editor-main-panel" delay={0.05}>
           <GlassPanel className="editor-writer-panel">
             <label className="editor-field">
-              <span className="sr-only">文章标题</span>
+              <span className="sr-only">内容标题</span>
               <input
                 value={draft.title}
                 onChange={(event) => onTitleChange(event.target.value)}
                 className="editor-title-input"
-                placeholder="请输入文章标题..."
+                placeholder="请输入内容标题..."
               />
             </label>
             {errors.title ? <p className="editor-field-error">{errors.title}</p> : null}
 
             <div className="editor-slug-row">
-              <span className="editor-inline-label">Post Slug</span>
+              <span className="editor-inline-label">Slug</span>
               <input
                 value={draft.slug}
                 onChange={(event) => onSlugChange(event.target.value)}
@@ -265,7 +288,7 @@ export function EditorComposePanel({
               <div className="editor-side-heading">
                 <Pill active className="gap-2">
                   <FileImage className="h-3 w-3" />
-                  封面图管理
+                  封面图
                 </Pill>
                 {draft.cover ? <span className="editor-cover-chip">{buildAssetMetaLine(draft.cover)}</span> : null}
               </div>
@@ -291,7 +314,7 @@ export function EditorComposePanel({
                     <div className="editor-cover-overlay">
                       <span className="editor-cover-overlay-action">
                         <UploadCloud className="h-4 w-4" />
-                        更换封面
+                        替换封面
                       </span>
                       <button
                         type="button"
@@ -313,7 +336,7 @@ export function EditorComposePanel({
                       <UploadCloud className="h-6 w-6" />
                     </div>
                     <div className="editor-cover-empty-copy">
-                      <span className="editor-cover-empty-title">上传文章封面</span>
+                      <span className="editor-cover-empty-title">上传封面</span>
                       <span className="editor-cover-empty-subtle">仅支持本地图片，选择后会立即预览。</span>
                     </div>
                   </div>
@@ -331,7 +354,7 @@ export function EditorComposePanel({
                 value={draft.summary}
                 onChange={(event) => onSummaryChange(event.target.value)}
                 className="editor-side-textarea"
-                placeholder="输入文章摘要..."
+                placeholder="输入摘要..."
                 rows={5}
               />
               {errors.summary ? <p className="editor-field-error">{errors.summary}</p> : null}
@@ -341,7 +364,8 @@ export function EditorComposePanel({
           <Reveal delay={0.12}>
             <GlassPanel className="editor-side-card">
               <div className="editor-side-heading">
-                <Pill active>栏目 / Category</Pill>
+                <Pill active>集合 / Collection</Pill>
+                <span className="editor-side-caption">{draftSource ? "Editing existing content" : "New draft"}</span>
               </div>
               <div className="editor-category-grid">
                 {EDITOR_CATEGORIES.map((entry) => (
@@ -359,6 +383,45 @@ export function EditorComposePanel({
             </GlassPanel>
           </Reveal>
 
+          <Reveal delay={0.125}>
+            <GlassPanel className="editor-side-card">
+              <div className="editor-side-heading">
+                <Pill active className="gap-2">
+                  <Star className="h-3 w-3" />
+                  Featured
+                </Pill>
+                <span className="editor-side-caption">{draft.featured ? "Will appear in featured areas" : "Regular item"}</span>
+              </div>
+              <button
+                type="button"
+                className={cn("editor-category-button w-full", draft.featured && "editor-category-button-active")}
+                onClick={() => onFeaturedChange(!draft.featured)}
+              >
+                {draft.featured ? "已设为精选" : "设为精选"}
+              </button>
+            </GlassPanel>
+          </Reveal>
+
+          {draft.category === "archive" ? (
+            <Reveal delay={0.13}>
+              <GlassPanel className="editor-side-card">
+                <div className="editor-side-heading">
+                  <Pill active className="gap-2">
+                    <Tags className="h-3 w-3" />
+                    文章主题分类
+                  </Pill>
+                </div>
+                <input
+                  value={draft.archiveMeta.topic}
+                  onChange={(event) => onArchiveTopicChange(event.target.value)}
+                  className="editor-side-input"
+                  placeholder="例如：设计与前端"
+                />
+                {errors.archiveTopic ? <p className="editor-field-error">{errors.archiveTopic}</p> : null}
+              </GlassPanel>
+            </Reveal>
+          ) : null}
+
           {draft.category === "project" ? (
             <>
               <Reveal delay={0.13}>
@@ -373,21 +436,24 @@ export function EditorComposePanel({
                     <input
                       value={draft.projectMeta.href}
                       onChange={(event) => onProjectMetaChange("href", event.target.value)}
-                      className="editor-slug-input"
+                      className="editor-side-input"
                       placeholder="Website URL"
                     />
+                    {errors.projectHref ? <p className="editor-field-error">{errors.projectHref}</p> : null}
                     <input
                       value={draft.projectMeta.github}
                       onChange={(event) => onProjectMetaChange("github", event.target.value)}
-                      className="editor-slug-input"
+                      className="editor-side-input"
                       placeholder="GitHub URL"
                     />
+                    {errors.projectGithub ? <p className="editor-field-error">{errors.projectGithub}</p> : null}
                     <input
                       value={draft.projectMeta.docs}
                       onChange={(event) => onProjectMetaChange("docs", event.target.value)}
-                      className="editor-slug-input"
+                      className="editor-side-input"
                       placeholder="Docs URL"
                     />
+                    {errors.projectDocs ? <p className="editor-field-error">{errors.projectDocs}</p> : null}
                   </div>
                 </GlassPanel>
               </Reveal>
@@ -404,7 +470,7 @@ export function EditorComposePanel({
                     <input
                       value={draft.projectMeta.year}
                       onChange={(event) => onProjectMetaChange("year", event.target.value)}
-                      className="editor-slug-input"
+                      className="editor-side-input"
                       placeholder="年份，例如 2026"
                     />
                     <input
@@ -418,7 +484,7 @@ export function EditorComposePanel({
                             .filter(Boolean),
                         )
                       }
-                      className="editor-slug-input"
+                      className="editor-side-input"
                       placeholder="技术栈，使用逗号分隔"
                     />
                     <ProjectIconSelector
@@ -448,9 +514,10 @@ export function EditorComposePanel({
                   <input
                     value={draft.resourceMeta.url}
                     onChange={(event) => onResourceMetaChange("url", event.target.value)}
-                    className="editor-slug-input"
+                    className="editor-side-input"
                     placeholder="原始资源 URL"
                   />
+                  {errors.resourceUrl ? <p className="editor-field-error">{errors.resourceUrl}</p> : null}
                 </GlassPanel>
               </Reveal>
 
@@ -464,18 +531,25 @@ export function EditorComposePanel({
                   </div>
                   <div className="space-y-3">
                     <input
+                      value={draft.resourceMeta.topic}
+                      onChange={(event) => onResourceMetaChange("topic", event.target.value)}
+                      className="editor-side-input"
+                      placeholder="资源主题分类，例如 动画"
+                    />
+                    {errors.resourceTopic ? <p className="editor-field-error">{errors.resourceTopic}</p> : null}
+                    <input
                       type="number"
                       min={1}
                       max={5}
                       value={draft.resourceMeta.rating}
                       onChange={(event) => onResourceMetaChange("rating", Number(event.target.value || 4))}
-                      className="editor-slug-input"
+                      className="editor-side-input"
                       placeholder="评分 1-5"
                     />
                     <input
                       value={draft.resourceMeta.monogram}
                       onChange={(event) => onResourceMetaChange("monogram", event.target.value)}
-                      className="editor-slug-input"
+                      className="editor-side-input"
                       placeholder="Monogram，例如 FM"
                     />
                     <AccentSelector
@@ -554,7 +628,7 @@ export function EditorComposePanel({
               <div className="editor-side-heading">
                 <Pill active className="gap-2">
                   <Sparkles className="h-3 w-3" />
-                  文章资源
+                  内容资源
                 </Pill>
                 <span className="editor-side-caption">{assetSummaryLabel}</span>
               </div>
@@ -624,6 +698,29 @@ export function EditorComposePanel({
               </div>
             </GlassPanel>
           </Reveal>
+
+          {draftSource ? (
+            <Reveal delay={0.2}>
+              <GlassPanel className="editor-side-card">
+                <div className="editor-side-heading">
+                  <Pill active className="gap-2">
+                    <Trash2 className="h-3 w-3" />
+                    危险操作
+                  </Pill>
+                  <span className="editor-side-caption">删除使用原始 source，不跟随未保存改动漂移</span>
+                </div>
+                <button
+                  type="button"
+                  className="editor-ghost-button w-full justify-center"
+                  onClick={onDelete}
+                  disabled={isBusy || isDeleting}
+                >
+                  {isDeleting ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                  <span>{isDeleting ? "删除中..." : "删除当前内容"}</span>
+                </button>
+              </GlassPanel>
+            </Reveal>
+          ) : null}
         </div>
       </div>
     </>

@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { getPersistedEditorDraftBySource } from "@/lib/content";
+import { sanitizeAdminNextPath } from "@/lib/admin-auth";
+import { isAdminRequest } from "@/lib/admin-auth-server";
 import {
   createEmptyEditorDraft,
   type EditorCategory,
@@ -32,9 +35,19 @@ function isEditorCategory(value: string): value is EditorCategory {
 }
 
 export default async function EditorPage({ searchParams }: PageProps) {
+  const canManage = await isAdminRequest();
   const params = await searchParams;
   const requestedCategory = readSearchValue(params.category).trim();
   const requestedSlug = readSearchValue(params.slug).trim();
+  const nextPath = sanitizeAdminNextPath(
+    requestedCategory && requestedSlug
+      ? `/editor?category=${requestedCategory}&slug=${requestedSlug}`
+      : "/editor",
+  );
+
+  if (!canManage) {
+    redirect(`/admin?next=${encodeURIComponent(nextPath)}`);
+  }
 
   let initialDraft: EditorDraft | null = null;
   let initialSource: EditorDraftSource | null = null;
