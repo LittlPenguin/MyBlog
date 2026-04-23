@@ -3404,6 +3404,18 @@ html[data-theme="dark"] .prose-sunset pre {
     grid-template-columns: 1fr;
   }
 
+  .home-board-grid {
+    justify-items: center;
+  }
+
+  .home-board-hero,
+  .home-board-sidecards,
+  .home-board-preview-grid,
+  .home-board-footer {
+    grid-column: 1 / -1;
+    width: min(100%, 52rem);
+  }
+
   .home-board-preview-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -3536,7 +3548,18 @@ html[data-theme="dark"] .prose-sunset pre {
   }
 
   .home-board-preview-grid {
+    width: min(100%, 28rem);
     grid-template-columns: 1fr;
+  }
+
+  .home-board-preview-grid > *,
+  .home-board-preview-grid .block,
+  .home-board-preview-grid .board-preview-card {
+    width: 100%;
+  }
+
+  .home-board-preview-grid .board-preview-card {
+    margin-inline: auto;
   }
 
   .board-footer-strip {
