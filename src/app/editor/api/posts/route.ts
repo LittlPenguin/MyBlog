@@ -1,14 +1,16 @@
 import { NextResponse } from "next/server";
 import {
   createEditorWritePayload,
+  deleteEditorContentFile,
   type EditorUploadedFile,
   updateEditorContentFile,
 } from "@/lib/content";
+import { isAdminRequest } from "@/lib/admin-auth-server";
 import {
   type EditorSubmitPayload,
   validateEditorDraft,
 } from "@/lib/editor";
-import type { EditorWriteResult } from "@/lib/publish-shared";
+import type { EditorDeleteResult, EditorWriteResult } from "@/lib/publish-shared";
 import {
   editorContentRootDir,
   revalidateEditorContentRoutes,
@@ -25,6 +27,16 @@ async function toUploadedFile(file: File): Promise<EditorUploadedFile> {
 }
 
 export async function POST(request: Request) {
+  if (!(await isAdminRequest())) {
+    return NextResponse.json<EditorWriteResult>(
+      {
+        ok: false,
+        message: "Admin access required.",
+      },
+      { status: 403 },
+    );
+  }
+
   let payload: EditorSubmitPayload;
   let coverUpload: EditorUploadedFile | null = null;
   let assetUploads: EditorUploadedFile[] = [];
@@ -99,6 +111,65 @@ export async function POST(request: Request) {
   }
 
   return NextResponse.json<EditorWriteResult>(result, {
+    status: result.ok ? 200 : 422,
+  });
+}
+
+export async function DELETE(request: Request) {
+  if (!(await isAdminRequest())) {
+    return NextResponse.json<EditorDeleteResult>(
+      {
+        ok: false,
+        message: "Admin access required.",
+      },
+      { status: 403 },
+    );
+  }
+
+  let source: EditorSubmitPayload["source"];
+
+  try {
+    const body = (await request.json()) as {
+      source?: EditorSubmitPayload["source"];
+    };
+    source = body.source ?? null;
+  } catch {
+    return NextResponse.json<EditorDeleteResult>(
+      {
+        ok: false,
+        message: "Request body must be valid JSON.",
+      },
+      { status: 400 },
+    );
+  }
+
+  if (!source) {
+    return NextResponse.json<EditorDeleteResult>(
+      {
+        ok: false,
+        message: "Missing original content source.",
+      },
+      { status: 400 },
+    );
+  }
+
+  const result = await deleteEditorContentFile({
+    rootDir: editorContentRootDir(),
+    source,
+  });
+
+  revalidateEditorContentRoutes(source.originalCategory, source.originalSlug);
+  revalidatePreviousContentRoute(source.originalCategory, source.originalSlug);
+
+  const response: EditorDeleteResult = result.ok
+    ? {
+        ok: true,
+        message: result.message,
+        redirectHref: result.redirectHref,
+      }
+    : result;
+
+  return NextResponse.json<EditorDeleteResult>(response, {
     status: result.ok ? 200 : 422,
   });
 }

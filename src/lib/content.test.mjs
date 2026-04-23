@@ -13,7 +13,9 @@ import {
   createContentFileBody,
   createEditorWritePayload,
   createPersistedEditorDraft,
+  deleteEditorContentFile,
   getContentDirectoryForCategory,
+  getPersistedEditorDraftBySource,
   parseContentCollectionItem,
   resolvePublishDate,
   updateEditorContentFile,
@@ -275,6 +277,13 @@ test("buildEditorWriteResult returns path metadata and persisted compose payload
     outputPath: "src/content/resources/new-resource.mdx",
     draft: {
       ...payload,
+      resourceMeta: {
+        ...payload.resourceMeta,
+        topic: "资源",
+      },
+      archiveMeta: {
+        topic: "",
+      },
       scheduleAt: "2026-04-14T00:00",
     },
     source: {
@@ -388,6 +397,7 @@ test("createPersistedEditorDraft maps persisted file metadata back to compose st
       category: "project",
       tags: ["Motion", "UI"],
       scheduleAt: "2026-04-12T00:00",
+      featured: false,
       projectMeta: {
         href: "",
         github: "",
@@ -402,8 +412,11 @@ test("createPersistedEditorDraft maps persisted file metadata back to compose st
         rating: 4,
         monogram: "",
         accent: "primary",
+        topic: "",
       },
-      archiveMeta: {},
+      archiveMeta: {
+        topic: "",
+      },
       cover: {
         name: "cover.webp",
         type: "",
@@ -801,4 +814,212 @@ test("content category directory map is stable", () => {
 test("tsconfig keeps the generated Next type directories included", () => {
   assert.equal(tsconfig.include.includes(".next/types/**/*.ts"), true);
   assert.equal(tsconfig.include.includes(".next/dev/types/**/*.ts"), true);
+});
+
+test("createBaseContentFrontmatter preserves archive and resource topic categories and featured state", () => {
+  const archiveFrontmatter = createBaseContentFrontmatter(
+    createEditorWritePayload({
+      title: "Archive Draft",
+      slug: "archive-draft",
+      summary: "Quiet note",
+      content: "# Archive Draft",
+      category: "archive",
+      tags: ["Notes"],
+      scheduleAt: null,
+      featured: true,
+      projectMeta: {
+        href: "",
+        github: "",
+        docs: "",
+        year: "",
+        stack: [],
+        icon: "grid",
+        accent: "primary",
+      },
+      resourceMeta: {
+        url: "",
+        rating: 4,
+        monogram: "",
+        accent: "primary",
+        topic: "",
+      },
+      archiveMeta: {
+        topic: "Design Notes",
+      },
+      cover: null,
+      assets: [],
+    }),
+  );
+
+  assert.equal(archiveFrontmatter.category, "Design Notes");
+  assert.equal(archiveFrontmatter.featured, true);
+
+  const resourceFrontmatter = createBaseContentFrontmatter(
+    createEditorWritePayload({
+      title: "Resource Draft",
+      slug: "resource-draft",
+      summary: "Useful link",
+      content: "# Resource Draft",
+      category: "resource",
+      tags: ["Reference"],
+      scheduleAt: null,
+      featured: true,
+      projectMeta: {
+        href: "",
+        github: "",
+        docs: "",
+        year: "",
+        stack: [],
+        icon: "grid",
+        accent: "primary",
+      },
+      resourceMeta: {
+        url: "https://example.com/resource-draft",
+        rating: 5,
+        monogram: "RD",
+        accent: "secondary",
+        topic: "Animation",
+      },
+      archiveMeta: {
+        topic: "",
+      },
+      cover: null,
+      assets: [],
+    }),
+  );
+
+  assert.equal(resourceFrontmatter.category, "Animation");
+  assert.equal(resourceFrontmatter.featured, true);
+});
+
+test("createPersistedEditorDraft restores featured and topic fields from persisted frontmatter", () => {
+  const archiveResult = createPersistedEditorDraft({
+    category: "archive",
+    slug: "building-a-calm-interface",
+    frontmatter: {
+      title: "Building a Calm Interface",
+      slug: "building-a-calm-interface",
+      summary: "Calm note",
+      description: "Calm note",
+      date: "2026-04-12",
+      category: "Design Notes",
+      tags: ["UI"],
+      featured: true,
+      assetNames: [],
+      assetPaths: [],
+    },
+    content: "# Building a Calm Interface",
+  });
+
+  assert.equal(archiveResult.draft.featured, true);
+  assert.deepEqual(archiveResult.draft.archiveMeta, { topic: "Design Notes" });
+
+  const resourceResult = createPersistedEditorDraft({
+    category: "resource",
+    slug: "framer-motion",
+    frontmatter: {
+      title: "Framer Motion",
+      slug: "framer-motion",
+      summary: "Motion toolkit",
+      description: "Motion toolkit",
+      date: "2026-04-12",
+      category: "Animation",
+      tags: ["Motion"],
+      featured: true,
+      assetNames: [],
+      assetPaths: [],
+      url: "https://www.framer.com/motion/",
+      rating: 5,
+      accent: "primary",
+      monogram: "FM",
+    },
+    content: "# Framer Motion",
+  });
+
+  assert.equal(resourceResult.draft.featured, true);
+  assert.equal(resourceResult.draft.resourceMeta.topic, "Animation");
+});
+
+test("getPersistedEditorDraftBySource loads persisted content into editor state", async () => {
+  const tempRoot = await mkdtemp(path.join(os.tmpdir(), "myblog-load-existing-"));
+  const resourcesDir = path.join(tempRoot, "resources");
+  await mkdir(resourcesDir, { recursive: true });
+  await writeFile(
+    path.join(resourcesDir, "framer-motion.mdx"),
+    `---
+title: "Framer Motion"
+slug: "framer-motion"
+summary: "Motion toolkit"
+date: "2026-04-09"
+category: "Animation"
+tags:
+  - Motion
+featured: true
+url: "https://www.framer.com/motion/"
+rating: 5
+accent: "primary"
+monogram: "FM"
+---
+
+# Framer Motion
+
+Body copy.
+`,
+    "utf8",
+  );
+
+  const result = await getPersistedEditorDraftBySource({
+    rootDir: tempRoot,
+    category: "resource",
+    slug: "framer-motion",
+  });
+
+  assert.equal(result?.draft.title, "Framer Motion");
+  assert.equal(result?.draft.featured, true);
+  assert.equal(result?.draft.resourceMeta.topic, "Animation");
+  assert.deepEqual(result?.source, {
+    originalCategory: "resource",
+    originalSlug: "framer-motion",
+  });
+});
+
+test("deleteEditorContentFile removes the content file and matching uploads directory", async () => {
+  const tempRoot = await mkdtemp(path.join(os.tmpdir(), "myblog-delete-existing-"));
+  const postsDir = path.join(tempRoot, "posts");
+  await mkdir(postsDir, { recursive: true });
+  const postPath = path.join(postsDir, "draft-note.mdx");
+  await writeFile(
+    postPath,
+    `---
+title: "Draft Note"
+slug: "draft-note"
+summary: "Initial summary"
+date: "2026-04-09"
+category: "Design Notes"
+tags:
+  - Notes
+featured: false
+assetNames: []
+---
+
+# Draft Note
+`,
+    "utf8",
+  );
+
+  const uploadDir = path.join(process.cwd(), "public", "uploads", "posts", "draft-note", "assets");
+  await mkdir(uploadDir, { recursive: true });
+  await writeFile(path.join(uploadDir, "diagram.txt"), "demo", "utf8");
+
+  const result = await deleteEditorContentFile({
+    rootDir: tempRoot,
+    source: {
+      originalCategory: "archive",
+      originalSlug: "draft-note",
+    },
+  });
+
+  assert.equal(result.ok, true);
+  await assert.rejects(readFile(postPath, "utf8"));
+  await assert.rejects(stat(path.join(uploadDir, "diagram.txt")));
 });

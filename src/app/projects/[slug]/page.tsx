@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import { GitBranch } from "lucide-react";
 import { notFound } from "next/navigation";
+import { AdminDeleteButton } from "@/components/site/admin-delete-button";
 import {
   DetailAttachmentsSection,
   DetailBackLink,
@@ -9,11 +10,9 @@ import {
   DetailPageShell,
   DetailRelatedSection,
 } from "@/components/site/detail-shell";
-import {
-  buildDetailAttachmentItems,
-  buildDetailMetaChips,
-  resolveDetailSummary,
-} from "@/lib/detail-shell";
+import { isAdminRequest } from "@/lib/admin-auth-server";
+import { buildDetailAttachmentItems, buildDetailMetaChips, resolveDetailSummary } from "@/lib/detail-shell";
+import { buildEditorLoadHref } from "@/lib/editor";
 import { getAllProjects, getProjectDetailBySlug, getProjectSlugs } from "@/lib/projects";
 import { formatDate } from "@/lib/utils";
 import { ProjectDetailContent } from "../project-detail-content";
@@ -51,13 +50,29 @@ export default async function ProjectDetailPage({ params }: PageProps) {
     notFound();
   }
 
+  const [canManage, allProjects] = await Promise.all([isAdminRequest(), getAllProjects()]);
   const summary = resolveDetailSummary(project.meta.summary, project.meta.description);
-  const allProjects = await getAllProjects();
   const related = allProjects.filter((item) => item.slug !== slug).slice(0, 3);
 
   return (
     <DetailPageShell
-      backLink={<DetailBackLink href="/projects" label="返回项目列表" transitionKey="project-back" />}
+      backLink={
+        <div className="flex flex-wrap items-center gap-3">
+          <DetailBackLink href="/projects" label="返回项目列表" transitionKey="project-back" />
+          {canManage ? (
+            <>
+              <DetailBackLink
+                href={buildEditorLoadHref("project", project.meta.slug)}
+                label="编辑"
+                transitionKey={`project-edit-${project.meta.slug}`}
+              />
+              <AdminDeleteButton category="project" slug={project.meta.slug} redirectHref="/projects" variant="inline">
+                删除
+              </AdminDeleteButton>
+            </>
+          ) : null}
+        </div>
+      }
       eyebrow={
         <>
           <span className="resource-detail-chip-dot" aria-hidden="true" />

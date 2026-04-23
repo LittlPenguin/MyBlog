@@ -1,6 +1,6 @@
 # MyBlog
 
-MyBlog is a content-driven Next.js site with three public content surfaces, a local MDX publishing editor, custom animated route transitions, and a shared light/dark theme system.
+MyBlog is a content-driven Next.js site with three public content surfaces, an admin-gated MDX publishing editor, custom animated route transitions, and a shared light/dark theme system.
 
 ## Main Surfaces
 
@@ -8,7 +8,8 @@ MyBlog is a content-driven Next.js site with three public content surfaces, a lo
 - `/projects`: project listing and project detail pages
 - `/resources`: resource listing and resource detail pages
 - `/posts/[slug]`, `/projects/[slug]`, `/resources/[slug]`: public detail routes
-- `/editor`: local publishing workflow for archive posts, projects, and resources
+- `/editor`: content creation, editing, and deletion flow for archive posts, projects, and resources
+- `/admin`: administrator access entry for editor and content-management actions
 
 ## Stack
 
@@ -20,28 +21,29 @@ MyBlog is a content-driven Next.js site with three public content surfaces, a lo
 
 ## Local Development
 
-Develop this repo from WSL. Do not use Windows-native Node.js, npm, or terminal sessions for this project.
+Develop this repo from the Windows local workspace. Use Windows-installed Node.js and npm from PowerShell or another Windows-native terminal.
 
 Recommended runtime:
 
-```bash
-nvm install 24.15.0
-nvm alias default 24.15.0
-nvm use 24.15.0
-```
-
-Confirm the shell resolves WSL tools before starting work:
-
-```bash
-which node
-which npm
+```powershell
 node -v
 npm -v
 ```
 
+Create local environment variables before starting the app:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Set:
+
+- `ADMIN_ACCESS_CODE` to the administrator access code you want to use
+- `ADMIN_SESSION_SECRET` to a long, high-entropy session secret
+
 Then start the app:
 
-```bash
+```powershell
 npm run dev
 ```
 
@@ -49,7 +51,7 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ## Verification
 
-```bash
+```powershell
 npm test
 npm run typecheck
 npm run build
@@ -70,10 +72,10 @@ Run these sequentially. `npm run typecheck` regenerates Next type metadata and i
 
 Example worktree flow:
 
-```bash
+```powershell
 git switch main
 git pull --ff-only
-git worktree add ../MyBlog-feature -b codex/feature-name main
+git worktree add ..\MyBlog-feature -b codex\feature-name main
 ```
 
 ## Project Docs

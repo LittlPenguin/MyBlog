@@ -7,6 +7,7 @@ This file summarizes the current product state for new Codex sessions and parall
 - The site exposes three content collections: archive posts, projects, and resources.
 - Each collection has a list page and a detail page.
 - The editor at `/editor` is the single publishing entry for all three content types.
+- The admin entry at `/admin` unlocks editor access and content-management actions.
 - Theme switching is implemented globally and persisted with `myblog.theme.v1`.
 - Route transitions are custom and use a shared shell instead of stock Next.js page swaps.
 
@@ -43,6 +44,14 @@ This file summarizes the current product state for new Codex sessions and parall
   - `accent`
 - Private publishing semantics have been removed from the editor flow. New content is written as public content.
 - Editor publishing is handled by `src/app/editor/api/posts/route.ts`, which writes files through the shared content helpers in `src/lib/content.ts`.
+- Content deletion also flows through the editor API and removes the matching content file plus its uploads directory.
+
+## Admin Access State
+
+- Admin access is guarded by `ADMIN_ACCESS_CODE` and `ADMIN_SESSION_SECRET`.
+- Successful admin login creates a signed session cookie and unlocks editor and destructive management actions.
+- `/editor` redirects unauthenticated visitors to `/admin?next=...`.
+- Archive, project, and resource management affordances are visible only while the request is in an admin session.
 
 ## Editor State
 
@@ -54,6 +63,8 @@ This file summarizes the current product state for new Codex sessions and parall
 - Category switches update the sidebar fields immediately.
 - Category body templates only auto-replace content when the draft is still near empty.
 - After publishing, the editor can build the correct public detail href for the selected category.
+- The editor can load persisted content from `/editor?category=<...>&slug=<...>` and reopen it as an editable draft.
+- Existing content can be deleted directly from the editor while preserving category-aware redirect behavior.
 - The old hidden/private toggle is no longer part of the editor model.
 
 ## Archive State
@@ -65,6 +76,14 @@ This file summarizes the current product state for new Codex sessions and parall
 - Search matches post title, summary, tags, and category.
 - Archive detail links preserve filter state so the post page can return to the filtered archive view.
 - The search and category controls are custom floating panels triggered by icon buttons.
+- In admin mode, archive list and detail views expose `编辑` and `删除` actions.
+
+## Project and Resource State
+
+- `/projects` and `/resources` are driven by real MDX content collections.
+- In admin mode, project and resource list/detail views expose `编辑` and `删除` actions.
+- Resource and archive topics are now first-class editor inputs instead of inferred-only labels.
+- Project and resource link fields validate as absolute public `http` or `https` URLs before publish.
 
 ## Theme and Shell State
 
@@ -84,11 +103,11 @@ This file summarizes the current product state for new Codex sessions and parall
 
 ## Development Baseline
 
-- WSL is the only supported day-to-day development environment for this repo.
-- Use WSL-managed `node` and `npm` via `nvm`; do not rely on Windows PATH shims inside WSL sessions.
+- Windows local development is the only supported day-to-day environment for this repo.
+- Use Windows-installed `node` and `npm` from PowerShell or another Windows-native terminal.
 - `main` should stay clean and reviewable between tasks. Do not use `main` as a scratch worktree.
 - New implementation work starts from the latest committed `main`, usually in a fresh `codex/<topic>` branch or dedicated worktree.
-- Before merge or handoff, rerun `npm test`, `npm run typecheck`, and `npm run build` from WSL in that order.
+- Before merge or handoff, rerun `npm test`, `npm run typecheck`, and `npm run build` from the Windows local workspace in that order.
 
 ## Branch Baseline
 

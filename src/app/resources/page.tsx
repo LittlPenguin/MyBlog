@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { GlassPanel, Pill, SoftPanel } from "@/components/site/ui";
+import { isAdminRequest } from "@/lib/admin-auth-server";
 import {
   normalizeResourceFiltersWithCategories,
   type ResourceFilters,
@@ -59,10 +60,14 @@ function ResourcesFallback() {
 
 async function ResourcesPageContent({ searchParams }: PageProps) {
   const resolvedSearchParams = await searchParams;
-  const [resources, categories] = await Promise.all([getAllResources(), getResourceCategories()]);
+  const [resources, categories, canManage] = await Promise.all([
+    getAllResources(),
+    getResourceCategories(),
+    isAdminRequest(),
+  ]);
   const filters = normalizeResourceFiltersWithCategories(resolvedSearchParams, categories);
 
-  return <ResourcesClient initialFilters={filters} resources={resources} categories={categories} />;
+  return <ResourcesClient initialFilters={filters} resources={resources} categories={categories} canManage={canManage} />;
 }
 
 export default function ResourcesPage({ searchParams }: PageProps) {

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
+import * as editorLib from "./editor.ts";
 import {
   applyEditorCategoryChange,
   applyEditorTitleChange,
@@ -43,6 +44,7 @@ test("createEmptyEditorDraft applies provided compose defaults", () => {
       category: "project",
       tags: [],
       scheduleAt: null,
+      featured: false,
       projectMeta: {
         href: "",
         github: "",
@@ -57,8 +59,11 @@ test("createEmptyEditorDraft applies provided compose defaults", () => {
         rating: 4,
         monogram: "",
         accent: "primary",
+        topic: "",
       },
-      archiveMeta: {},
+      archiveMeta: {
+        topic: "",
+      },
       cover: null,
       assets: [],
     },
@@ -68,7 +73,7 @@ test("createEmptyEditorDraft applies provided compose defaults", () => {
 test("validateEditorDraft returns the required error keys for an empty draft", () => {
   const errors = validateEditorDraft(createEmptyEditorDraft());
 
-  assert.deepEqual(Object.keys(errors).sort(), ["content", "slug", "summary", "title"]);
+  assert.deepEqual(Object.keys(errors).sort(), ["archiveTopic", "content", "slug", "summary", "title"]);
   assert.equal(typeof errors.title, "string");
   assert.equal(typeof errors.slug, "string");
   assert.equal(typeof errors.summary, "string");
@@ -127,6 +132,7 @@ test("prepareEditorSubmitPayload trims fields and normalizes metadata", () => {
     category: "resource",
     tags: ["React", "UI"],
     scheduleAt: null,
+    featured: false,
     projectMeta: {
       href: "https://example.com/project",
       github: "https://github.com/example/repo",
@@ -141,8 +147,11 @@ test("prepareEditorSubmitPayload trims fields and normalizes metadata", () => {
       rating: 5,
       monogram: "FM",
       accent: "tertiary",
+      topic: "",
     },
-    archiveMeta: {},
+    archiveMeta: {
+      topic: "",
+    },
     cover: {
       name: "cover.webp",
       type: "image/webp",
@@ -172,6 +181,7 @@ test("validateEditorDraft rejects invalid schedule values", () => {
     category: "archive",
     tags: [],
     scheduleAt: "not-a-date",
+    featured: false,
     projectMeta: {
       href: "",
       github: "",
@@ -186,13 +196,16 @@ test("validateEditorDraft rejects invalid schedule values", () => {
       rating: 4,
       monogram: "",
       accent: "primary",
+      topic: "",
     },
-    archiveMeta: {},
+    archiveMeta: {
+      topic: "",
+    },
     cover: null,
     assets: [],
   });
 
-  assert.deepEqual(Object.keys(errors), ["scheduleAt"]);
+  assert.deepEqual(Object.keys(errors).sort(), ["archiveTopic", "scheduleAt"]);
   assert.equal(typeof errors.scheduleAt, "string");
 });
 
@@ -229,6 +242,7 @@ Body line 1.
     category: "project",
     tags: ["React", "Motion"],
     scheduleAt: null,
+    featured: false,
     projectMeta: {
       href: "https://example.com/project",
       github: "https://github.com/example/repo",
@@ -243,8 +257,11 @@ Body line 1.
         rating: 4,
         monogram: "",
         accent: "primary",
+        topic: "",
       },
-    archiveMeta: {},
+    archiveMeta: {
+      topic: "",
+    },
     cover: null,
     assets: [],
   });
@@ -277,6 +294,7 @@ Body line 1.
     category: "archive",
     tags: [],
     scheduleAt: null,
+    featured: false,
     projectMeta: {
       href: "",
       github: "",
@@ -291,8 +309,11 @@ Body line 1.
       rating: 4,
       monogram: "",
       accent: "primary",
+      topic: "",
     },
-    archiveMeta: {},
+    archiveMeta: {
+      topic: "",
+    },
     cover: null,
     assets: [],
   });
@@ -512,4 +533,103 @@ test("editor surface copy does not contain known mojibake fragments", () => {
       );
     }
   }
+});
+
+test("editor library exposes editor deep-link loading helper", () => {
+  assert.equal(typeof editorLib.buildEditorLoadHref, "function");
+  assert.equal(editorLib.buildEditorLoadHref("archive", "Hello World"), "/editor?category=archive&slug=hello-world");
+});
+
+test("prepareEditorSubmitPayload preserves featured state and collection topics", () => {
+  const payload = prepareEditorSubmitPayload({
+    ...createEmptyEditorDraft({
+      category: "resource",
+    }),
+    title: "Useful Resource",
+    slug: "Useful Resource",
+    summary: "Collected notes",
+    content: "Body",
+    featured: true,
+    archiveMeta: {
+      topic: "Archive Topic",
+    },
+    resourceMeta: {
+      url: " https://example.com/reference ",
+      rating: 5,
+      monogram: " rs ",
+      accent: "secondary",
+      topic: "Animation",
+    },
+  });
+
+  assert.equal(payload.featured, true);
+  assert.deepEqual(payload.archiveMeta, { topic: "Archive Topic" });
+  assert.deepEqual(payload.resourceMeta, {
+    url: "https://example.com/reference",
+    rating: 5,
+    monogram: "RS",
+    accent: "secondary",
+    topic: "Animation",
+  });
+});
+
+test("validateEditorDraft requires collection topics and valid absolute project or resource URLs", () => {
+  const archiveErrors = validateEditorDraft({
+    ...createEmptyEditorDraft({
+      category: "archive",
+    }),
+    title: "Archive note",
+    slug: "archive-note",
+    summary: "Summary",
+    content: "Body",
+    featured: false,
+    archiveMeta: {
+      topic: "",
+    },
+  });
+
+  assert.equal(typeof archiveErrors.archiveTopic, "string");
+
+  const resourceErrors = validateEditorDraft({
+    ...createEmptyEditorDraft({
+      category: "resource",
+    }),
+    title: "Resource note",
+    slug: "resource-note",
+    summary: "Summary",
+    content: "Body",
+    featured: false,
+    resourceMeta: {
+      url: "example.com/resource-note",
+      rating: 4,
+      monogram: "RN",
+      accent: "primary",
+      topic: "Reference",
+    },
+  });
+
+  assert.equal(typeof resourceErrors.resourceUrl, "string");
+
+  const projectErrors = validateEditorDraft({
+    ...createEmptyEditorDraft({
+      category: "project",
+    }),
+    title: "Project note",
+    slug: "project-note",
+    summary: "Summary",
+    content: "Body",
+    featured: false,
+    projectMeta: {
+      href: "https://github.com/",
+      github: "notaurl",
+      docs: "",
+      year: "2026",
+      stack: ["React"],
+      icon: "grid",
+      accent: "primary",
+    },
+  });
+
+  assert.equal(typeof projectErrors.projectHref, "string");
+  assert.equal(typeof projectErrors.projectGithub, "string");
 });

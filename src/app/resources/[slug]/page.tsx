@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import { ExternalLink } from "lucide-react";
 import { notFound } from "next/navigation";
+import { AdminDeleteButton } from "@/components/site/admin-delete-button";
 import {
   DetailAttachmentsSection,
   DetailBackLink,
@@ -9,11 +10,9 @@ import {
   DetailPageShell,
   DetailRelatedSection,
 } from "@/components/site/detail-shell";
-import {
-  buildDetailAttachmentItems,
-  buildDetailMetaChips,
-  resolveDetailSummary,
-} from "@/lib/detail-shell";
+import { isAdminRequest } from "@/lib/admin-auth-server";
+import { buildDetailAttachmentItems, buildDetailMetaChips, resolveDetailSummary } from "@/lib/detail-shell";
+import { buildEditorLoadHref } from "@/lib/editor";
 import { buildResourcesHref, buildResourceDetailHref, type ResourceFilters } from "@/lib/resources-shared";
 import { getRelatedResources, getResourceDetailBySlug, getResourceSlugs } from "@/lib/resources";
 import { ResourceDetailContent } from "../resource-detail-content";
@@ -53,19 +52,31 @@ export default async function ResourceDetailPage({ params, searchParams }: PageP
     notFound();
   }
 
+  const [canManage, related] = await Promise.all([
+    isAdminRequest(),
+    getRelatedResources(resource.meta.slug, 3),
+  ]);
   const summary = resolveDetailSummary(resource.meta.summary, resource.meta.description);
-  const related = await getRelatedResources(resource.meta.slug, 3);
   const backHref = buildResourcesHref(filters);
 
   return (
     <DetailPageShell
       backLink={
-        <DetailBackLink
-          href={backHref}
-          preserveScroll
-          label="返回资源列表"
-          transitionKey="resource-back"
-        />
+        <div className="flex flex-wrap items-center gap-3">
+          <DetailBackLink href={backHref} preserveScroll label="返回资源列表" transitionKey="resource-back" />
+          {canManage ? (
+            <>
+              <DetailBackLink
+                href={buildEditorLoadHref("resource", resource.meta.slug)}
+                label="编辑"
+                transitionKey={`resource-edit-${resource.meta.slug}`}
+              />
+              <AdminDeleteButton category="resource" slug={resource.meta.slug} redirectHref={backHref} variant="inline">
+                删除
+              </AdminDeleteButton>
+            </>
+          ) : null}
+        </div>
       }
       eyebrow={
         <>
@@ -89,11 +100,7 @@ export default async function ResourceDetailPage({ params, searchParams }: PageP
           </div>
         ) : null
       }
-      metaChips={buildDetailMetaChips([
-        resource.meta.category,
-        `${resource.meta.rating}.0 / 5`,
-        ...resource.meta.tags,
-      ])}
+      metaChips={buildDetailMetaChips([resource.meta.category, `${resource.meta.rating}.0 / 5`, ...resource.meta.tags])}
       actions={
         resource.meta.url ? (
           <DetailHeroActions

@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import {
-  DetailBackLink,
-  DetailPageShell,
-  DetailRelatedSection,
-} from "@/components/site/detail-shell";
+import { AdminDeleteButton } from "@/components/site/admin-delete-button";
+import { DetailBackLink, DetailPageShell, DetailRelatedSection } from "@/components/site/detail-shell";
+import { isAdminRequest } from "@/lib/admin-auth-server";
 import { buildDetailMetaChips, resolveDetailSummary } from "@/lib/detail-shell";
+import { buildEditorLoadHref } from "@/lib/editor";
 import { buildArchiveHref, type ArchiveFilters } from "@/lib/posts-shared";
 import { getAdjacentPosts, getPostBySlug, getPostSlugs } from "@/lib/posts";
 import { formatDate } from "@/lib/utils";
@@ -50,10 +49,10 @@ export default async function PostPage({ params, searchParams }: PageProps) {
     notFound();
   }
 
+  const [canManage, adjacent] = await Promise.all([isAdminRequest(), getAdjacentPosts(slug)]);
   const summary = resolveDetailSummary(post.meta.summary);
-  const { previous, next } = await getAdjacentPosts(slug);
-  const relatedItems = [previous, next]
-    .filter((item): item is NonNullable<typeof previous> => item !== null)
+  const relatedItems = [adjacent.previous, adjacent.next]
+    .filter((item): item is NonNullable<typeof adjacent.previous> => item !== null)
     .map((item) => ({
       title: item.title,
       summary: item.summary,
@@ -61,16 +60,26 @@ export default async function PostPage({ params, searchParams }: PageProps) {
       transitionKey: `post-${item.slug}`,
       meta: item.readingMinutes,
     }));
+  const backHref = buildArchiveHref(filters);
 
   return (
     <DetailPageShell
       backLink={
-        <DetailBackLink
-          href={buildArchiveHref(filters)}
-          preserveScroll
-          label="返回归档"
-          transitionKey="back-archive"
-        />
+        <div className="flex flex-wrap items-center gap-3">
+          <DetailBackLink href={backHref} preserveScroll label="返回归档" transitionKey="back-archive" />
+          {canManage ? (
+            <>
+              <DetailBackLink
+                href={buildEditorLoadHref("archive", post.meta.slug)}
+                label="编辑"
+                transitionKey={`post-edit-${post.meta.slug}`}
+              />
+              <AdminDeleteButton category="archive" slug={post.meta.slug} redirectHref={backHref} variant="inline">
+                删除
+              </AdminDeleteButton>
+            </>
+          ) : null}
+        </div>
       }
       eyebrow={
         <>

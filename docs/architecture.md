@@ -16,6 +16,14 @@ This document maps the main subsystems that new agents need before changing beha
   - `src/lib/resources.ts`
 - Slug lookup and normalization are centralized in `src/lib/content-slug.ts` and related helpers, which support non-ASCII slugs.
 
+## Admin Access Flow
+
+- The admin entry UI lives at `/admin`.
+- Session creation and teardown are handled by `src/app/admin/api/session/route.ts`.
+- Server-side session validation is handled by `src/lib/admin-auth-server.ts`.
+- Token signing, access-code validation, and next-path sanitization live in `src/lib/admin-auth.ts`.
+- Editor writes and deletes now require an active admin session.
+
 ## Editor Publishing Flow
 
 - The UI entry is `/editor`.
@@ -28,7 +36,13 @@ This document maps the main subsystems that new agents need before changing beha
   4. Files are written into the correct collection directory
   5. Uploaded assets are copied into `public/uploads/<collection>/<slug>`
   6. Related routes are revalidated
+- Delete flow:
+  1. UI sends the original content source to `DELETE /editor/api/posts`
+  2. Shared content helpers resolve the current file path by slug
+  3. The content file and its matching uploads directory are removed
+  4. Related routes are revalidated and the client redirects to the collection page
 - Category-specific fields are written into frontmatter only for the relevant collection.
+- Existing content can be reloaded into the editor from category + slug query parameters.
 
 ## Public Routes
 
@@ -36,6 +50,7 @@ This document maps the main subsystems that new agents need before changing beha
 - Projects resolve to `/projects/[slug]`
 - Resources resolve to `/resources/[slug]`
 - The editor uses category-aware detail href generation so post-publish navigation lands on the correct detail page.
+- Admin-only edit and delete affordances are injected into archive, project, and resource list/detail surfaces after server-side session checks.
 
 ## Shared Shell and Navigation
 

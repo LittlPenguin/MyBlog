@@ -41,9 +41,12 @@ export type EditorResourceMeta = {
   rating: number;
   monogram: string;
   accent: EditorAccent;
+  topic: string;
 };
 
-export type EditorArchiveMeta = Record<string, never>;
+export type EditorArchiveMeta = {
+  topic: string;
+};
 
 export type EditorDraft = {
   title: string;
@@ -53,6 +56,7 @@ export type EditorDraft = {
   category: EditorCategory;
   tags: string[];
   scheduleAt: string | null;
+  featured: boolean;
   projectMeta: EditorProjectMeta;
   resourceMeta: EditorResourceMeta;
   archiveMeta: EditorArchiveMeta;
@@ -60,4 +64,13 @@ export type EditorDraft = {
   assets: EditorAttachmentAsset[];
 };
 
-export type EditorFieldErrors = Partial<Record<keyof EditorDraft, string>>;
+export type EditorFieldErrorKey =
+  | keyof EditorDraft
+  | "archiveTopic"
+  | "resourceTopic"
+  | "resourceUrl"
+  | "projectHref"
+  | "projectGithub"
+  | "projectDocs";
+
+export type EditorFieldErrors = Partial<Record<EditorFieldErrorKey, string>>;
