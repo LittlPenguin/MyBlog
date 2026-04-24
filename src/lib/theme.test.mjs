@@ -119,6 +119,15 @@ test("site frame defines a dedicated mobile navigation shell instead of reusing 
   assert.match(globalStyles, /\.shell-mobile-nav\s*\{\s*display:\s*block;/);
 });
 
+test("expanded mobile nav panel uses a near-solid light-theme glass surface for narrow screens", () => {
+  const globalStyles = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8");
+
+  assert.match(
+    globalStyles,
+    /\.shell-mobile-nav-panel\s*\{[\s\S]*?background:\s*linear-gradient\(\s*180deg,\s*color-mix\(in srgb, var\(--surface-strong\) 100%, transparent\),\s*color-mix\(in srgb, var\(--background-strong\) 98%, transparent\)\s*\)/,
+  );
+});
+
 test("theme toggle keeps a dedicated breathing animation hook for theme switches", () => {
   const toggleSource = readFileSync(join(process.cwd(), "src/components/site/theme-toggle.tsx"), "utf8");
   const globalStyles = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8");

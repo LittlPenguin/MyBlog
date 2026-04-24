@@ -1324,8 +1324,8 @@ html[data-theme="dark"] .archive-dialog-chip-idle {
   border: 1px solid color-mix(in srgb, var(--line) 92%, transparent);
   background: linear-gradient(
     180deg,
-    color-mix(in srgb, var(--surface-strong) 95%, transparent),
-    color-mix(in srgb, var(--surface) 97%, transparent)
+    color-mix(in srgb, var(--surface-strong) 100%, transparent),
+    color-mix(in srgb, var(--background-strong) 98%, transparent)
   );
   padding: 1rem;
   backdrop-filter: blur(24px);
