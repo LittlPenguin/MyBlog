@@ -6,6 +6,7 @@ This file summarizes the current product state for new Codex sessions and parall
 
 - The site exposes three content collections: archive posts, projects, and resources.
 - Each collection has a list page and a detail page.
+- The `/about` page now includes a live message submission form.
 - The editor at `/editor` is the single publishing entry for all three content types.
 - The admin entry at `/admin` unlocks editor access and content-management actions.
 - Theme switching is implemented globally and persisted with `myblog.theme.v1`.
@@ -45,6 +46,14 @@ This file summarizes the current product state for new Codex sessions and parall
 - Private publishing semantics have been removed from the editor flow. New content is written as public content.
 - Editor publishing is handled by `src/app/editor/api/posts/route.ts`, which writes files through the shared content helpers in `src/lib/content.ts`.
 - Content deletion also flows through the editor API and removes the matching content file plus its uploads directory.
+- Visitor messages are stored separately from MDX content under `src/content/messages`.
+- Each message is persisted as one JSON file with:
+  - `id`
+  - `name`
+  - `email`
+  - `body`
+  - `createdAt`
+  - `readAt`
 
 ## Admin Access State
 
@@ -52,6 +61,10 @@ This file summarizes the current product state for new Codex sessions and parall
 - Successful admin login creates a signed session cookie and unlocks editor and destructive management actions.
 - `/editor` redirects unauthenticated visitors to `/admin?next=...`.
 - Archive, project, and resource management affordances are visible only while the request is in an admin session.
+- Admin-only message APIs also require the same session state:
+  - `GET /api/messages`
+  - `POST /api/messages/[id]/read`
+  - `DELETE /api/messages/[id]`
 
 ## Editor State
 
@@ -66,6 +79,21 @@ This file summarizes the current product state for new Codex sessions and parall
 - The editor can load persisted content from `/editor?category=<...>&slug=<...>` and reopen it as an editable draft.
 - Existing content can be deleted directly from the editor while preserving category-aware redirect behavior.
 - The old hidden/private toggle is no longer part of the editor model.
+- The editor header now includes a `查看留言` action that opens an embedded message-management panel without leaving the current draft route.
+- The embedded message panel groups items into `未读` and `已读`, both sorted newest first.
+- Opening an unread message detail automatically marks it as read through the message API while keeping the current selection stable.
+- Message deletion reuses the shared centered confirmation dialog and removes the item from panel state immediately after success.
+
+## About Message State
+
+- `/about` submits visitor messages through `POST /api/messages`.
+- The public form requires:
+  - `name`
+  - `email`
+  - `body`
+- Successful submission clears the form and shows confirmation feedback.
+- Validation and network failures preserve user input and show inline error or failure feedback.
+- Messages are not shown publicly, do not send email, and do not support replies or spam controls in the current version.
 
 ## Archive State
 

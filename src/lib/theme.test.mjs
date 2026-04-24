@@ -247,22 +247,28 @@ test("archive dialogs close only on outside pointer interactions", () => {
 
 test("admin delete uses a custom animated confirmation dialog instead of window.confirm", () => {
   const deleteButtonSource = readFileSync(join(process.cwd(), "src/components/site/admin-delete-button.tsx"), "utf8");
+  const deleteDialogSource = readFileSync(
+    join(process.cwd(), "src/components/site/delete-confirm-dialog.tsx"),
+    "utf8",
+  );
   const globalStyles = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8");
 
   assert.doesNotMatch(deleteButtonSource, /window\.confirm/);
-  assert.match(deleteButtonSource, /AnimatePresence/);
-  assert.match(deleteButtonSource, /motion\./);
-  assert.match(deleteButtonSource, /createPortal/);
-  assert.match(deleteButtonSource, /admin-delete-dialog-overlay/);
-  assert.match(deleteButtonSource, /admin-delete-dialog-shell/);
-  assert.match(deleteButtonSource, /admin-delete-dialog-stage/);
-  assert.match(deleteButtonSource, /admin-delete-dialog-panel/);
-  assert.match(deleteButtonSource, /admin-delete-dialog-body/);
-  assert.match(deleteButtonSource, /admin-delete-dialog-warning/);
-  assert.match(deleteButtonSource, /admin-delete-dialog-cancel/);
-  assert.match(deleteButtonSource, /admin-delete-dialog-confirm/);
-  assert.match(deleteButtonSource, /取消/);
-  assert.match(deleteButtonSource, /确认删除/);
+  assert.match(deleteButtonSource, /DeleteConfirmDialog/);
+  assert.match(deleteDialogSource, /AnimatePresence/);
+  assert.match(deleteDialogSource, /motion\./);
+  assert.match(deleteDialogSource, /createPortal/);
+  assert.match(deleteButtonSource, /DeleteConfirmDialog/);
+  assert.match(deleteDialogSource, /admin-delete-dialog-overlay/);
+  assert.match(deleteDialogSource, /admin-delete-dialog-shell/);
+  assert.match(deleteDialogSource, /admin-delete-dialog-stage/);
+  assert.match(deleteDialogSource, /admin-delete-dialog-panel/);
+  assert.match(deleteDialogSource, /admin-delete-dialog-body/);
+  assert.match(deleteDialogSource, /admin-delete-dialog-warning/);
+  assert.match(deleteDialogSource, /admin-delete-dialog-cancel/);
+  assert.match(deleteDialogSource, /admin-delete-dialog-confirm/);
+  assert.match(deleteDialogSource, /取消/);
+  assert.match(deleteDialogSource, /确认删除/);
   assert.doesNotMatch(deleteButtonSource, /message && !isOpen/);
   assert.match(globalStyles, /@keyframes admin-delete-breathe/);
   assert.match(globalStyles, /@keyframes admin-delete-pop-in/);

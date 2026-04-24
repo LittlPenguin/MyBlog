@@ -7,6 +7,7 @@ import {
   FileImage,
   FileUp,
   Globe,
+  Inbox,
   Link2,
   LoaderCircle,
   LogOut,
@@ -84,6 +85,7 @@ type ComposePanelProps = {
   onClearCover: () => void;
   onRemoveAsset: (assetId: string) => void;
   onLogout: () => void;
+  onOpenMessages: () => void;
 };
 
 function AccentSelector({
@@ -166,6 +168,7 @@ export function EditorComposePanel({
   onClearCover,
   onRemoveAsset,
   onLogout,
+  onOpenMessages,
 }: ComposePanelProps) {
   const isBusy = status === "saving";
   const editorHeading = draftSource ? "编辑现有内容" : "新建内容";
@@ -187,6 +190,11 @@ export function EditorComposePanel({
             <button type="button" className="editor-ghost-button" onClick={() => importInputRef.current?.click()}>
               <FileUp className="h-4 w-4" />
               <span>导入 Markdown</span>
+            </button>
+
+            <button type="button" className="editor-ghost-button" onClick={onOpenMessages}>
+              <Inbox className="h-4 w-4" />
+              <span>查看留言</span>
             </button>
 
             <button

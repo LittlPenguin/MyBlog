@@ -7,8 +7,9 @@ MyBlog is a content-driven Next.js site with three public content surfaces, an a
 - `/archive`: grouped post archive with URL-synced search and category filters
 - `/projects`: project listing and project detail pages
 - `/resources`: resource listing and resource detail pages
+- `/about`: profile page with a live message form that posts to the local message store
 - `/posts/[slug]`, `/projects/[slug]`, `/resources/[slug]`: public detail routes
-- `/editor`: content creation, editing, and deletion flow for archive posts, projects, and resources
+- `/editor`: content creation, editing, deletion, and embedded message management for archive posts, projects, and resources
 - `/admin`: administrator access entry for editor and content-management actions
 
 ## Stack
@@ -40,6 +41,8 @@ Set:
 
 - `ADMIN_ACCESS_CODE` to the administrator access code you want to use
 - `ADMIN_SESSION_SECRET` to a long, high-entropy session secret
+
+Message submissions from `/about` are stored as JSON files under `src/content/messages`. Runtime message files are ignored by Git and are managed only through the local admin flow in `/editor`.
 
 Then start the app:
 

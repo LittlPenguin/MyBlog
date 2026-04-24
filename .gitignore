@@ -51,3 +51,6 @@ next-env.d.ts
 
 # local Codex state
 /.codex/
+
+# runtime messages
+/src/content/messages/*.json

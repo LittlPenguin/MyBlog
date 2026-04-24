@@ -19,11 +19,15 @@ import {
   type EditorFieldErrors,
   type EditorMode,
 } from "@/lib/editor";
+import type { MessageListItem } from "@/lib/messages";
+import type { MessageListResponse } from "@/lib/messages-shared";
 import type { EditorDeleteResult, EditorWriteResult } from "@/lib/publish-shared";
 import { buildInitialDraft, countLines, countWords, describeAsset, isSlugCustom } from "./editor-helpers";
+import { EditorMessagePanel } from "./message-panel";
 import { EditorComposePanel } from "./editor-sections";
 
 type EditorStatus = "idle" | "saving" | "saved" | "error";
+type EditorView = "compose" | "messages";
 
 type EditorClientProps = {
   initialDraft?: EditorDraft | null;
@@ -64,11 +68,16 @@ export function EditorClient({
   const [draftSource, setDraftSource] = useState<EditorDraftSource | null>(initialSource);
   const [isSlugTouched, setIsSlugTouched] = useState(() => (initialDraft ? isSlugCustom(initialDraft) : false));
   const [mode, setMode] = useState<EditorMode>(DEFAULT_MODE);
+  const [view, setView] = useState<EditorView>("compose");
   const [tagInput, setTagInput] = useState("");
   const [status, setStatus] = useState<EditorStatus>("idle");
   const [message, setMessage] = useState(initialMessage ?? "Editor ready.");
   const [errors, setErrors] = useState<EditorFieldErrors>({});
   const [isDeleting, setIsDeleting] = useState(false);
+  const [messages, setMessages] = useState<MessageListItem[]>([]);
+  const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
+  const [messageFeedback, setMessageFeedback] = useState("");
+  const [messagesLoading, setMessagesLoading] = useState(false);
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const coverInputRef = useRef<HTMLInputElement | null>(null);
   const assetInputRef = useRef<HTMLInputElement | null>(null);
@@ -467,6 +476,44 @@ export function EditorClient({
     }
   }
 
+  async function loadMessages() {
+    setMessagesLoading(true);
+
+    try {
+      const response = await fetch("/api/messages", {
+        method: "GET",
+        cache: "no-store",
+      });
+      const result = (await response.json()) as MessageListResponse;
+
+      if (!response.ok || !result.ok) {
+        setMessageFeedback(result.ok ? "Failed to load messages." : result.message);
+        return false;
+      }
+
+      setMessages(result.items);
+      if (selectedMessageId && !result.items.some((item) => item.id === selectedMessageId)) {
+        setSelectedMessageId(null);
+      }
+      setMessageFeedback("");
+      return true;
+    } catch {
+      setMessageFeedback("Network error while loading messages.");
+      return false;
+    } finally {
+      setMessagesLoading(false);
+    }
+  }
+
+  async function openMessagesView() {
+    setView("messages");
+    if (messages.length > 0) {
+      return;
+    }
+
+    await loadMessages();
+  }
+
   return (
     <div className="editor-screen">
       <input
@@ -501,43 +548,60 @@ export function EditorClient({
       />
 
       <section className="editor-main">
-        <EditorComposePanel
-          draft={draft}
-          draftSource={draftSource}
-          mode={mode}
-          errors={errors}
-          status={status}
-          message={message}
-          tagInput={tagInput}
-          wordCount={wordCount}
-          lineCount={lineCount}
-          assetSummaryLabel={assetSummaryLabel}
-          importInputRef={importInputRef}
-          coverInputRef={coverInputRef}
-          assetInputRef={assetInputRef}
-          isDeleting={isDeleting}
-          onTitleChange={handleTitleChange}
-          onSlugChange={handleSlugChange}
-          onSummaryChange={(value) => updateDraft("summary", value)}
-          onContentChange={(value) => updateDraft("content", value)}
-          onCategoryChange={(value) =>
-            setDraft((current) => applyEditorCategoryChange({ draft: current, nextCategory: value }))
-          }
-          onScheduleChange={(value) => updateDraft("scheduleAt", value)}
-          onFeaturedChange={(value: boolean) => updateDraft("featured", value)}
-          onArchiveTopicChange={updateArchiveTopic}
-          onProjectMetaChange={updateProjectMeta}
-          onResourceMetaChange={updateResourceMeta}
-          onTagInputChange={setTagInput}
-          onTagAdd={() => addTag(tagInput)}
-          onTagRemove={removeTag}
-          onToggleMode={() => setMode((current) => (current === "edit" ? "preview" : "edit"))}
-          onSubmit={handleSubmit}
-          onDelete={handleDelete}
-          onClearCover={clearCover}
-          onRemoveAsset={removeAsset}
-          onLogout={handleLogout}
-        />
+        {view === "compose" ? (
+          <EditorComposePanel
+            draft={draft}
+            draftSource={draftSource}
+            mode={mode}
+            errors={errors}
+            status={status}
+            message={message}
+            tagInput={tagInput}
+            wordCount={wordCount}
+            lineCount={lineCount}
+            assetSummaryLabel={assetSummaryLabel}
+            importInputRef={importInputRef}
+            coverInputRef={coverInputRef}
+            assetInputRef={assetInputRef}
+            isDeleting={isDeleting}
+            onTitleChange={handleTitleChange}
+            onSlugChange={handleSlugChange}
+            onSummaryChange={(value) => updateDraft("summary", value)}
+            onContentChange={(value) => updateDraft("content", value)}
+            onCategoryChange={(value) =>
+              setDraft((current) => applyEditorCategoryChange({ draft: current, nextCategory: value }))
+            }
+            onScheduleChange={(value) => updateDraft("scheduleAt", value)}
+            onFeaturedChange={(value: boolean) => updateDraft("featured", value)}
+            onArchiveTopicChange={updateArchiveTopic}
+            onProjectMetaChange={updateProjectMeta}
+            onResourceMetaChange={updateResourceMeta}
+            onTagInputChange={setTagInput}
+            onTagAdd={() => addTag(tagInput)}
+            onTagRemove={removeTag}
+            onToggleMode={() => setMode((current) => (current === "edit" ? "preview" : "edit"))}
+            onSubmit={handleSubmit}
+            onDelete={handleDelete}
+            onClearCover={clearCover}
+            onRemoveAsset={removeAsset}
+            onLogout={handleLogout}
+            onOpenMessages={() => void openMessagesView()}
+          />
+        ) : (
+          <EditorMessagePanel
+            items={messages}
+            selectedId={selectedMessageId}
+            feedback={messageFeedback}
+            loading={messagesLoading}
+            onBack={() => setView("compose")}
+            onRefresh={() => void loadMessages()}
+            onSelect={setSelectedMessageId}
+            onItemsChange={setMessages}
+            onSelectedIdChange={setSelectedMessageId}
+            onFeedbackChange={setMessageFeedback}
+            onLoadingChange={setMessagesLoading}
+          />
+        )}
       </section>
     </div>
   );

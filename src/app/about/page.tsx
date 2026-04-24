@@ -1,10 +1,11 @@
 import Image from "next/image";
 import type { Metadata } from "next";
-import { Mail, MapPin, Milestone, Send, Sparkles } from "lucide-react";
+import { Mail, MapPin, Milestone, Sparkles } from "lucide-react";
 import { Reveal } from "@/components/motion/reveal";
 import { ActionLink, GlassPanel, Pill, SoftPanel } from "@/components/site/ui";
 import { aboutHighlights, aboutSkills, siteConfig, socialLinks, timeline } from "@/content/site";
 import { getAllProjects } from "@/lib/projects";
+import { MessageForm } from "./message-form";
 
 export const metadata: Metadata = {
   title: "关于",
@@ -223,27 +224,7 @@ export default async function AboutPage() {
                   </p>
                 </div>
 
-                <form className="space-y-3">
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <input className="theme-surface w-full rounded-[18px] px-4 py-3 text-sm outline-none" placeholder="Name" />
-                    <input
-                      className="theme-surface w-full rounded-[18px] px-4 py-3 text-sm outline-none"
-                      placeholder="Email"
-                      type="email"
-                    />
-                  </div>
-                  <textarea
-                    className="theme-surface min-h-32 w-full rounded-[22px] px-4 py-3 text-sm outline-none"
-                    placeholder="Your message..."
-                  />
-                  <button
-                    type="submit"
-                    className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-primary to-primary-strong px-5 py-3 text-sm font-semibold text-white shadow-[0_18px_36px_rgba(172,42,31,0.22)]"
-                  >
-                    发送
-                    <Send className="h-4 w-4" />
-                  </button>
-                </form>
+                <MessageForm />
               </div>
             </GlassPanel>
           </Reveal>
