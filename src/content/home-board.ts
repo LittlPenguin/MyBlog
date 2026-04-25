@@ -5,22 +5,22 @@ type CalendarDay = {
 };
 
 export const homeBoard = {
-  greeting: "午后好，YYsuni!",
-  lead: "Good Afternoon. 愿温暖的夕阳光芒带给你创作的灵感。",
+  greeting: "午后好，WuLong!",
+  lead: "Good Afternoon. 记录学习、开发实践和日常思考。",
   archiveLabel: "查看归档 View Archive",
   projectsLabel: "我的项目 Projects",
   currentTimeLabel: "Current Time",
   calendarLabel: "Live Calendar",
-  footerNote: "Designed for high-end personal editorial experiences",
+  footerNote: "Designed for personal learning notes and project records",
   footerVersion: "V1.0 Proposal Board",
   about: {
     title: "关于 About",
-    role: "UI Designer & Writer",
-    description: "热爱摄影、猫与代码。",
+    role: "学生 / 开发者",
+    description: "记录学习、项目与代码实践。",
   },
   projects: {
     title: "项目 Projects",
-    name: "SunsetOS Interface",
+    name: "Personal Blog System",
     progress: "75%",
   },
   resources: {

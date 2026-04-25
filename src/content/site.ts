@@ -19,23 +19,23 @@ export type TimelineItem = {
 };
 
 export const siteConfig = {
-  name: "YYsuni",
-  role: "Writer / Designer / Frontend",
-  description: "把文章、项目、资源与日常观察整理在同一块暖色玻璃画布上的个人博客。",
-  heroGreeting: "午后好，YYsuni!",
-  heroTitle: "把写作、项目与灵感收拢在一块会呼吸的玻璃画布里。",
+  name: "WuLong",
+  role: "学生 / 开发者",
+  description: "记录学习、前端实践、项目整理与日常思考的个人博客。",
+  heroGreeting: "午后好，WuLong!",
+  heroTitle: "把学习记录、项目实践与日常思考整理在自己的博客里。",
   heroLead:
-    "这里不是单纯的作品集，也不是只写技术的博客，而是一个把内容、界面与工程感放在同一套节奏里的个人网站。",
-  location: "Shanghai / Remote",
-  email: "hello@yysuni.me",
-  now: "最近在重构站点的统一壳体、共享元素路由过渡，以及一套更接近 Stitch 稿的内容布局。",
-  avatar: "/visuals/avatar-orb.svg",
+    "这里用于沉淀学习笔记、开发过程、项目复盘和有价值的资源，让内容可以被持续整理和更新。",
+  location: "Guangdong",
+  email: "xiaowulonely23@gmail.com",
+  now: "正在持续整理前端学习记录、个人项目和技术资源，让这个博客成为稳定更新的学习空间。",
+  avatar: "/visuals/avatar-wulong.jpg",
   gallery: [
     "/visuals/studio-grid-01.svg",
     "/visuals/studio-grid-02.svg",
     "/visuals/studio-grid-03.svg",
   ],
-  footerNote: "Built as a calm editorial system for writing, making, and collecting.",
+  footerNote: "Built as a personal space for learning, building, and writing.",
 } as const;
 
 export const navItems: NavItem[] = [
@@ -82,46 +82,45 @@ export const navItems: NavItem[] = [
 ];
 
 export const socialLinks: SocialLink[] = [
-  { label: "GitHub", href: "https://github.com/" },
-  { label: "掘金", href: "https://juejin.cn/" },
-  { label: "邮箱", href: "mailto:hello@yysuni.me" },
-  { label: "RSS", href: "/rss.xml" },
+  { label: "GitHub", href: "https://github.com/LittlPenguin" },
+  { label: "掘金", href: "https://juejin.cn/user/327030668540793" },
+  { label: "邮箱", href: "mailto:xiaowulonely23@gmail.com" },
 ];
 
 export const timeline: TimelineItem[] = [
   {
     year: "2026",
-    title: "把个人博客重构成真正可持续更新的内容系统",
-    description: "从单屏展示转向多页面组织，让文章、项目、资源与关于页共享一套稳定的体验语言。",
+    title: "持续整理个人博客与学习内容",
+    description: "把文章、项目和资源放进统一的站点结构里，方便长期记录和复盘。",
   },
   {
     year: "2025",
-    title: "开始系统整理设计与前端之间的共享语法",
-    description: "把动效、排版、组件与文案放进同一个工程语境里处理，而不是各自为战。",
+    title: "积累前端学习与项目实践",
+    description: "围绕 React、Next.js 和页面实现持续练习，把阶段性收获整理成可回看的内容。",
   },
   {
     year: "2024",
-    title: "形成长期写作与持续创作的工作流",
-    description: "稳定输出界面拆解、项目复盘与资源记录，也逐渐明确自己的视觉偏好。",
+    title: "开始记录学习过程",
+    description: "把技术笔记、资源链接和项目想法逐步沉淀下来，形成自己的知识索引。",
   },
 ];
 
 export const aboutHighlights = [
-  "偏爱温暖、克制、带一点 editorial 气质的网页设计。",
-  "喜欢把写作、设计和前端实现放进同一个工作流里，一起推到成品。",
-  "更关注页面的呼吸感、滚动层级和无感切换，而不是堆很多组件。",
+  "关注前端开发、页面交互和内容型网站的长期维护。",
+  "喜欢把学习笔记、项目实践和资源整理放在同一个清晰的工作流里。",
+  "希望个人博客既能记录技术成长，也能留下真实的思考和复盘。",
 ];
 
 export const aboutSkills = [
-  "UI / UX Design",
+  "学习记录",
+  "前端开发",
   "React / Next.js",
-  "Tailwind CSS",
-  "Content Writing",
-  "Motion System",
+  "内容写作",
+  "项目实践",
 ];
 
 export const homeSignals = [
-  "正在把 App Router 切换改成更连续的共享元素过渡。",
-  "统一 MDX 写作、项目展示与资源收藏的数据结构。",
-  "重建首页与内页的关系，让全站在统一壳体下仍保留各自的版式个性。",
+  "正在持续整理前端学习笔记和个人项目记录。",
+  "用 MDX 管理文章、项目和资源收藏，让内容更容易维护。",
+  "把这个站点作为学习、实践和复盘的长期空间。",
 ];

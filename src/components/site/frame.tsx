@@ -120,7 +120,7 @@ function MobileNavigation({
     <div className="shell-mobile-nav" data-route-overlay-ignore>
       <div className="shell-mobile-nav-bar">
         <RouteLink href="/" transitionKey="mobile-brand-mark" className="shell-mobile-nav-brand">
-          <span className="shell-mobile-nav-brand-mark">YY</span>
+          <span className="shell-mobile-nav-brand-mark">WL</span>
           <span className="shell-mobile-nav-brand-copy">
             <span className="shell-mobile-nav-brand-name">{siteConfig.name}</span>
             <span className="shell-mobile-nav-divider" aria-hidden="true" />

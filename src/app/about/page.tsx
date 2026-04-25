@@ -9,7 +9,7 @@ import { MessageForm } from "./message-form";
 
 export const metadata: Metadata = {
   title: "关于",
-  description: "关于 YYsuni 的工作方式、创作节奏与内容型网站实践。",
+  description: "关于 WuLong 的学习记录、开发实践与个人博客。",
 };
 
 export default async function AboutPage() {
@@ -26,13 +26,13 @@ export default async function AboutPage() {
 
             <div className="space-y-5">
               <Pill active className="w-fit">
-                Explorer & Creator
+                Student & Developer
               </Pill>
               <h1 className="font-heading text-5xl font-black tracking-[-0.08em] text-foreground md:text-6xl">
                 关于 / <span className="text-primary italic">About Me</span>
               </h1>
               <p className="max-w-2xl text-sm leading-8 text-muted-foreground md:text-base">
-                我更关心网页如何被感受到，而不是它拥有多少组件和多少效果。好的个人网站应该像一本持续更新的视觉手帐，既能承载长文，也能容纳项目、收藏与日常观察。
+                这里记录我的学习笔记、前端实践、项目整理和日常思考。希望这个博客可以长期更新，也能把零散的知识和经验沉淀成清晰的内容。
               </p>
               <div className="flex flex-wrap gap-3">
                 <ActionLink href="/archive" transitionKey="about-archive">
@@ -68,7 +68,7 @@ export default async function AboutPage() {
                 <div className="overflow-hidden rounded-full border-4 border-white shadow-[var(--shadow-mid)]">
                   <Image
                     src={siteConfig.avatar}
-                    alt="YYsuni avatar"
+                    alt="WuLong avatar"
                     width={240}
                     height={240}
                     className="h-full w-full object-cover"
@@ -78,20 +78,20 @@ export default async function AboutPage() {
               </div>
 
               <div className="space-y-2">
-                <h2 className="font-heading text-3xl font-black tracking-[-0.05em] text-foreground">YYsuni</h2>
-                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Sunset Editorial System</p>
+                <h2 className="font-heading text-3xl font-black tracking-[-0.05em] text-foreground">WuLong</h2>
+                <p className="text-xs tracking-[0.2em] text-muted-foreground">学生 / 开发者</p>
               </div>
 
               <div className="flex flex-wrap gap-2">
-                <Pill active>Designer</Pill>
-                <Pill>Writer</Pill>
-                <Pill>Dev</Pill>
+                <Pill active>学生</Pill>
+                <Pill>开发者</Pill>
+                <Pill>博客作者</Pill>
               </div>
 
               <div className="about-rail-copy">
                 <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Current Status</p>
                 <p className="mt-3 text-sm leading-7 text-foreground">
-                  正在探索内容型网站在设计语言、路由过渡和前端结构之间的平衡点，让站点既有温度，也有持续维护的秩序感。
+                  正在持续整理前端学习记录、个人项目和技术资源，让这个博客成为稳定更新的学习空间。
                 </p>
               </div>
             </GlassPanel>
@@ -131,7 +131,7 @@ export default async function AboutPage() {
                 ))}
               </div>
               <SoftPanel className="mt-5 p-4 text-sm italic leading-7 text-primary">
-                “好的网站应该像落日余晖一样，温暖、清晰，而且不打断阅读。”
+                “把学习过程记录下来，也是在给未来的自己留下路线。”
               </SoftPanel>
             </GlassPanel>
           </aside>
@@ -220,7 +220,7 @@ export default async function AboutPage() {
                     留言 / Message
                   </h3>
                   <p className="text-sm leading-7 text-muted-foreground">
-                    如果你也在做内容型网站、编辑器或偏个人表达的网站结构，可以来聊。这里保留了一块更轻盈的联系区域，而不是把表单单独拉成长栏。
+                    如果你也在学习前端、整理个人项目，或想交流技术博客和开发实践，可以来聊。这里保留了一块轻量的联系区域，留言只用于后台管理。
                   </p>
                 </div>
 

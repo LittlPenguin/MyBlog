@@ -23,25 +23,25 @@ const label = Space_Grotesk({
 });
 
 const siteDescription =
-  "一个用 React、Next.js 与 Tailwind 构建的现代个人博客，聚合作写作、项目、资源与温和的无感路由过渡。";
+  "WuLong 的个人博客，用于记录学习、前端实践、项目整理与技术资源。";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://example.com"),
   title: {
-    default: "YYsuni | Sunset Glass Blog",
-    template: "%s | YYsuni",
+    default: "WuLong | Personal Blog",
+    template: "%s | WuLong",
   },
   description: siteDescription,
   openGraph: {
-    title: "YYsuni | Sunset Glass Blog",
+    title: "WuLong | Personal Blog",
     description: siteDescription,
     type: "website",
     locale: "zh_CN",
-    siteName: "YYsuni",
+    siteName: "WuLong",
   },
   twitter: {
     card: "summary_large_image",
-    title: "YYsuni | Sunset Glass Blog",
+    title: "WuLong | Personal Blog",
     description: siteDescription,
   },
 };
