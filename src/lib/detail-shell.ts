@@ -36,7 +36,18 @@ export function isRenderableExternalHref(href: string) {
 }
 
 export function buildDetailMetaChips(values: Array<string | null | undefined>) {
-  return values.map((value) => value?.trim() ?? "").filter(Boolean);
+  const seen = new Set<string>();
+
+  return values
+    .map((value) => value?.trim() ?? "")
+    .filter((value) => {
+      if (!value || seen.has(value)) {
+        return false;
+      }
+
+      seen.add(value);
+      return true;
+    });
 }
 
 export function resolveDetailSummary(summary?: string | null, description?: string | null) {

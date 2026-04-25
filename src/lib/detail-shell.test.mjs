@@ -16,6 +16,13 @@ test("buildDetailMetaChips filters empty values and preserves order", () => {
   );
 });
 
+test("buildDetailMetaChips removes duplicate labels while preserving first occurrence", () => {
+  assert.deepEqual(
+    buildDetailMetaChips(["2026", "Next.js", "TypeScript", "Next.js", "  TypeScript  ", "Charts"]),
+    ["2026", "Next.js", "TypeScript", "Charts"],
+  );
+});
+
 test("renderDetailHeroActionAttrs sets new-tab attrs for all external hero actions", () => {
   assert.deepEqual(
     renderDetailHeroActionAttrs([
