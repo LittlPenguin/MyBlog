@@ -9,6 +9,9 @@ export type EditorWriteResult =
       outputPath: string;
       draft: EditorDraft;
       source: EditorDraftSource;
+      deploymentPending?: boolean;
+      commitUrl?: string;
+      redirectHref?: string | null;
     }
   | {
       ok: false;

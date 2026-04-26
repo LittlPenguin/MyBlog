@@ -54,7 +54,17 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ## Cloudflare Workers Deployment
 
-Cloudflare deployments are read-only for this repo's file-backed publishing model. Public posts, projects, and resources are bundled at build time through `src/content/generated/static-content-registry.*`, so update MDX locally, commit, and redeploy.
+Cloudflare deployments cannot write directly into the deployed Worker bundle. Public posts, projects, and resources are bundled at build time through `src/content/generated/static-content-registry.*`.
+
+Online `/editor` publishing on Cloudflare writes content back to the GitHub repository, then Cloudflare's Git integration rebuilds the Worker from `main`. Configure these Worker runtime variables/secrets before using online publishing:
+
+- `ADMIN_ACCESS_CODE`
+- `ADMIN_SESSION_SECRET`
+- `MYBLOG_GITHUB_REPOSITORY`, for example `LittlPenguin/MyBlog`
+- `MYBLOG_GITHUB_BRANCH`, usually `main`
+- `MYBLOG_GITHUB_TOKEN`, as a secret with repository Contents read/write permission
+
+If `MYBLOG_GITHUB_TOKEN` is missing, online publishing and deletion return a configuration error instead of trying to write files locally.
 
 Production builds use Webpack because the current OpenNext Cloudflare adapter does not reliably load Next 16 Turbopack server chunks in the Worker runtime.
 
@@ -64,7 +74,7 @@ Use this build command in Cloudflare:
 npm run cf:build
 ```
 
-Online `/editor` publishing, deletion, and message persistence require moving storage to D1/R2 or another durable service. On Workers, those write APIs return `501` instead of attempting to write into the deployed bundle.
+Message persistence still requires moving storage to D1/R2 or another durable service. On Workers, message write/manage APIs return `501` instead of attempting to write into the deployed bundle.
 
 ## Verification
 

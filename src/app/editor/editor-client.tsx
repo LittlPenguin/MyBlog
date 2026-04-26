@@ -409,7 +409,9 @@ export function EditorClient({
 
       applyPersistedDraft(result.draft, result.source);
       setMessage(result.message);
-      router.push(buildEditorDetailHref(result.category, result.slug));
+      if (result.redirectHref !== null && !result.deploymentPending) {
+        router.push(result.redirectHref ?? buildEditorDetailHref(result.category, result.slug));
+      }
     } catch {
       setStatus("error");
       setMessage("Network error while publishing.");

@@ -117,3 +117,10 @@ test("admin permission routes and pages are wired into the app surface", () => {
   assert.match(projectDetailPage, /canManage/);
   assert.match(resourceDetailPage, /canManage/);
 });
+
+test("admin client performs full document navigation after session changes", () => {
+  const adminClient = readFileSync(join(process.cwd(), "src/app/admin/admin-client.tsx"), "utf8");
+
+  assert.match(adminClient, /window\.location\.assign\(result\.redirectHref\)/);
+  assert.doesNotMatch(adminClient, /router\.push\(result\.redirectHref\);\s*router\.refresh\(\);/);
+});

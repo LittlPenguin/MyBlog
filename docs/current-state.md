@@ -47,7 +47,7 @@ This file summarizes the current product state for new Codex sessions and parall
 - Editor publishing is handled by `src/app/editor/api/posts/route.ts`, which writes files through the shared content helpers in `src/lib/content.ts`.
 - Content deletion also flows through the editor API and removes the matching content file plus its uploads directory.
 - Cloudflare Workers deployments bundle public MDX content into `src/content/generated/static-content-registry.*` before build so public collection pages do not depend on runtime filesystem reads.
-- Cloudflare Workers deployments are read-only for file-backed publishing. `/editor` publish/delete APIs return `501` there; content should be edited locally and redeployed unless publishing storage is migrated to D1/R2.
+- Cloudflare Workers deployments cannot mutate the deployed bundle. `/editor` publish/delete APIs write content changes back to GitHub when `MYBLOG_GITHUB_REPOSITORY`, `MYBLOG_GITHUB_BRANCH`, and secret `MYBLOG_GITHUB_TOKEN` are configured, then Cloudflare's Git deployment rebuilds from `main`.
 - Visitor messages are stored separately from MDX content under `src/content/messages`.
 - Each message is persisted as one JSON file with:
   - `id`
@@ -131,6 +131,7 @@ This file summarizes the current product state for new Codex sessions and parall
 - `main` is the active baseline. Old Codex branches should not be used to infer the current state.
 - Production builds use `next build --webpack` because the OpenNext Cloudflare runtime path currently does not reliably load Next 16 Turbopack server chunks.
 - `npm run cf:build` is the supported Cloudflare build command because it refreshes the static content registry before OpenNext packages the Worker.
+- Online editor publishing on Cloudflare requires runtime secrets, not only build variables: `ADMIN_ACCESS_CODE`, `ADMIN_SESSION_SECRET`, and `MYBLOG_GITHUB_TOKEN`.
 - `.codex/` is local workspace state and should not be committed unless explicitly requested.
 
 ## Development Baseline

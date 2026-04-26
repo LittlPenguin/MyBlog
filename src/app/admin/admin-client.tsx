@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { KeyRound, LoaderCircle, LogOut } from "lucide-react";
 import { Reveal } from "@/components/motion/reveal";
 import { GlassPanel, Pill } from "@/components/site/ui";
@@ -23,7 +22,6 @@ type SessionResult =
     };
 
 export function AdminClient({ initialNext, canManage, isConfigured }: AdminClientProps) {
-  const router = useRouter();
   const [accessCode, setAccessCode] = useState("");
   const [message, setMessage] = useState(
     isConfigured
@@ -60,8 +58,7 @@ export function AdminClient({ initialNext, canManage, isConfigured }: AdminClien
           return;
         }
 
-        router.push(result.redirectHref);
-        router.refresh();
+        window.location.assign(result.redirectHref);
       } catch {
         setMessage("管理员验证请求失败。");
       }
@@ -81,8 +78,7 @@ export function AdminClient({ initialNext, canManage, isConfigured }: AdminClien
           return;
         }
 
-        router.push(result.redirectHref);
-        router.refresh();
+        window.location.assign(result.redirectHref);
       } catch {
         setMessage("退出管理员模式失败。");
       }

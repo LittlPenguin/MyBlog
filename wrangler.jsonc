@@ -3,13 +3,15 @@
   "name": "wulongblog",
   "main": ".open-next/worker.js",
   "compatibility_date": "2026-04-26",
-  "compatibility_flags": ["nodejs_compat"],
+  "compatibility_flags": ["nodejs_compat", "nodejs_compat_populate_process_env"],
   "assets": {
     "directory": ".open-next/assets",
     "binding": "ASSETS"
   },
   "vars": {
-    "MYBLOG_FILE_STORAGE": "readonly"
+    "MYBLOG_FILE_STORAGE": "readonly",
+    "MYBLOG_GITHUB_REPOSITORY": "LittlPenguin/MyBlog",
+    "MYBLOG_GITHUB_BRANCH": "main"
   },
   "observability": {
     "enabled": true

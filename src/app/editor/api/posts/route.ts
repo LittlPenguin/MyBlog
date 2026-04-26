@@ -1,12 +1,23 @@
 import { NextResponse } from "next/server";
+import path from "node:path";
 import {
   createEditorWritePayload,
   deleteEditorContentFile,
+  getContentDirectoryForCategory,
   type EditorUploadedFile,
   updateEditorContentFile,
 } from "@/lib/content";
+import { findContentFileBySlug } from "@/lib/content-slug";
 import { isAdminRequest } from "@/lib/admin-auth-server";
 import { isCloudflareRuntime } from "@/lib/runtime-environment";
+import {
+  buildGitHubEditorDeletePlan,
+  buildGitHubEditorPublishPlan,
+  deleteEditorContentFromGitHub,
+  publishEditorContentToGitHub,
+  readGitHubPublishConfig,
+  toRepositoryRelativePath,
+} from "@/lib/github-publishing";
 import {
   type EditorSubmitPayload,
   validateEditorDraft,
@@ -27,17 +38,16 @@ async function toUploadedFile(file: File): Promise<EditorUploadedFile> {
   };
 }
 
-export async function POST(request: Request) {
-  if (isCloudflareRuntime()) {
-    return NextResponse.json<EditorWriteResult>(
-      {
-        ok: false,
-        message: "Cloudflare deployment is read-only for file-based publishing. Edit content locally and redeploy, or migrate publishing storage to D1/R2.",
-      },
-      { status: 501 },
-    );
+async function findExistingContentSource(source: EditorSubmitPayload["source"]) {
+  if (!source) {
+    return null;
   }
 
+  const directory = path.join(editorContentRootDir(), getContentDirectoryForCategory(source.originalCategory));
+  return findContentFileBySlug(directory, source.originalSlug);
+}
+
+export async function POST(request: Request) {
   if (!(await isAdminRequest())) {
     return NextResponse.json<EditorWriteResult>(
       {
@@ -103,6 +113,47 @@ export async function POST(request: Request) {
     );
   }
 
+  if (isCloudflareRuntime()) {
+    const config = readGitHubPublishConfig();
+
+    if (!config) {
+      return NextResponse.json<EditorWriteResult>(
+        {
+          ok: false,
+          message: "线上发布需要先配置 MYBLOG_GITHUB_REPOSITORY 和 MYBLOG_GITHUB_TOKEN。",
+        },
+        { status: 503 },
+      );
+    }
+
+    try {
+      const existing = await findExistingContentSource(prepared.source ?? null);
+      const plan = buildGitHubEditorPublishPlan({
+        payload: prepared,
+        coverUpload,
+        assetUploads,
+        existingContentPath: existing ? toRepositoryRelativePath(existing.filePath) : null,
+        existingSource: existing?.source ?? "",
+      });
+      const result = await publishEditorContentToGitHub({
+        config,
+        plan,
+      });
+
+      return NextResponse.json<EditorWriteResult>(result, {
+        status: result.ok ? 200 : result.errors ? 422 : 502,
+      });
+    } catch (error) {
+      return NextResponse.json<EditorWriteResult>(
+        {
+          ok: false,
+          message: error instanceof Error ? error.message : "GitHub 发布请求失败。",
+        },
+        { status: 502 },
+      );
+    }
+  }
+
   const result = await updateEditorContentFile({
     rootDir: editorContentRootDir(),
     payload: prepared,
@@ -127,16 +178,6 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  if (isCloudflareRuntime()) {
-    return NextResponse.json<EditorDeleteResult>(
-      {
-        ok: false,
-        message: "Cloudflare deployment is read-only for file-based publishing. Delete content locally and redeploy, or migrate publishing storage to D1/R2.",
-      },
-      { status: 501 },
-    );
-  }
-
   if (!(await isAdminRequest())) {
     return NextResponse.json<EditorDeleteResult>(
       {
@@ -172,6 +213,45 @@ export async function DELETE(request: Request) {
       },
       { status: 400 },
     );
+  }
+
+  if (isCloudflareRuntime()) {
+    const config = readGitHubPublishConfig();
+
+    if (!config) {
+      return NextResponse.json<EditorDeleteResult>(
+        {
+          ok: false,
+          message: "线上删除需要先配置 MYBLOG_GITHUB_REPOSITORY 和 MYBLOG_GITHUB_TOKEN。",
+        },
+        { status: 503 },
+      );
+    }
+
+    try {
+      const existing = await findExistingContentSource(source);
+      const plan = buildGitHubEditorDeletePlan({
+        source,
+        existingSource: existing?.source ?? "",
+        existingContentPath: existing ? toRepositoryRelativePath(existing.filePath) : null,
+      });
+      const result = await deleteEditorContentFromGitHub({
+        config,
+        plan,
+      });
+
+      return NextResponse.json<EditorDeleteResult>(result, {
+        status: result.ok ? 200 : 502,
+      });
+    } catch (error) {
+      return NextResponse.json<EditorDeleteResult>(
+        {
+          ok: false,
+          message: error instanceof Error ? error.message : "GitHub 删除请求失败。",
+        },
+        { status: 502 },
+      );
+    }
   }
 
   const result = await deleteEditorContentFile({
