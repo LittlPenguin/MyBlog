@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { isAdminRequest } from "@/lib/admin-auth-server";
 import { createMessage, readAllMessages, validateMessageInput } from "@/lib/messages";
 import type { MessageCreateResponse, MessageListResponse } from "@/lib/messages-shared";
+import { isCloudflareRuntime } from "@/lib/runtime-environment";
 import { apiMessageRootDir, revalidateMessageRoutes } from "./shared";
 
 export async function GET() {
@@ -23,6 +24,16 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  if (isCloudflareRuntime()) {
+    return NextResponse.json<MessageCreateResponse>(
+      {
+        ok: false,
+        message: "Cloudflare deployment is read-only for file-based messages. Use local message storage or migrate messages to D1/R2.",
+      },
+      { status: 501 },
+    );
+  }
+
   let body: Record<string, unknown>;
 
   try {

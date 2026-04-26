@@ -8,6 +8,7 @@ import rehypeSlug from "rehype-slug";
 import remarkGfm from "remark-gfm";
 import { MDXComponents } from "@/components/mdx/components";
 import { findContentFileBySlug, normalizeContentSlug } from "./content-slug.js";
+import { getStaticContentEntries } from "./static-content.js";
 
 const POSTS_DIR = path.join(process.cwd(), "src", "content", "posts");
 
@@ -27,7 +28,7 @@ export type PostMeta = PostFrontmatter & {
 };
 
 export async function getPostSlugs() {
-  const files = await fs.readdir(POSTS_DIR);
+  const files = await fs.readdir(POSTS_DIR).catch(() => getStaticContentEntries(POSTS_DIR).map((entry) => entry.fileName));
   return files.filter((file) => file.endsWith(".mdx")).map((file) => file.replace(/\.mdx$/, ""));
 }
 

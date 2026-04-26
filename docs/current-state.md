@@ -46,6 +46,8 @@ This file summarizes the current product state for new Codex sessions and parall
 - Private publishing semantics have been removed from the editor flow. New content is written as public content.
 - Editor publishing is handled by `src/app/editor/api/posts/route.ts`, which writes files through the shared content helpers in `src/lib/content.ts`.
 - Content deletion also flows through the editor API and removes the matching content file plus its uploads directory.
+- Cloudflare Workers deployments bundle public MDX content into `src/content/generated/static-content-registry.*` before build so public collection pages do not depend on runtime filesystem reads.
+- Cloudflare Workers deployments are read-only for file-backed publishing. `/editor` publish/delete APIs return `501` there; content should be edited locally and redeployed unless publishing storage is migrated to D1/R2.
 - Visitor messages are stored separately from MDX content under `src/content/messages`.
 - Each message is persisted as one JSON file with:
   - `id`
@@ -94,6 +96,7 @@ This file summarizes the current product state for new Codex sessions and parall
 - Successful submission clears the form and shows confirmation feedback.
 - Validation and network failures preserve user input and show inline error or failure feedback.
 - Messages are not shown publicly, do not send email, and do not support replies or spam controls in the current version.
+- Cloudflare Workers deployments do not persist file-backed messages; message write/manage APIs return `501` until the message store is migrated to durable storage.
 
 ## Archive State
 
@@ -126,7 +129,8 @@ This file summarizes the current product state for new Codex sessions and parall
 
 - The repo still contains some mojibake Chinese text in older metadata, labels, and helper strings. Do not assume all Chinese copy is clean.
 - `main` is the active baseline. Old Codex branches should not be used to infer the current state.
-- `npm run build` may still show an existing Turbopack tracing warning related to content imports; this is known history and not necessarily caused by the current task.
+- Production builds use `next build --webpack` because the OpenNext Cloudflare runtime path currently does not reliably load Next 16 Turbopack server chunks.
+- `npm run cf:build` is the supported Cloudflare build command because it refreshes the static content registry before OpenNext packages the Worker.
 - `.codex/` is local workspace state and should not be committed unless explicitly requested.
 
 ## Development Baseline

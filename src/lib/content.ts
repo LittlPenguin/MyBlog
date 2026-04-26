@@ -16,6 +16,7 @@ import {
   prepareEditorSubmitPayload,
 } from "./editor.js";
 import type { EditorWriteResult } from "./publish-shared";
+import { readStaticContentCollection } from "./static-content.js";
 
 export const CONTENT_CATEGORY_DIRECTORY = {
   archive: "posts",
@@ -203,6 +204,13 @@ export async function parseContentCollectionItem<T extends BaseContentFrontmatte
   filePath: string,
 ) {
   const source = await fs.readFile(filePath, "utf8");
+  return parseContentCollectionSource<T>(filePath, source);
+}
+
+export function parseContentCollectionSource<T extends BaseContentFrontmatter = BaseContentFrontmatter>(
+  filePath: string,
+  source: string,
+) {
   const { data, content } = matter(source);
 
   return {
@@ -216,6 +224,11 @@ export async function readCollectionItems<T extends BaseContentFrontmatter = Bas
   directory: string,
 ) {
   const entries = await fs.readdir(directory, { withFileTypes: true }).catch(() => []);
+
+  if (entries.length === 0) {
+    return readStaticContentCollection<T>(directory);
+  }
+
   const files = entries
     .filter((entry) => entry.isFile() && entry.name.endsWith(".mdx"))
     .map((entry) => path.join(directory, entry.name));
@@ -503,7 +516,7 @@ export async function getPersistedEditorDraftBySource({
       return null;
     }
 
-    const item = await parseContentCollectionItem(match.filePath);
+    const item = parseContentCollectionSource(match.filePath, match.source);
     return createPersistedEditorDraft({
       category,
       slug,

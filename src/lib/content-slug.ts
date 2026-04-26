@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import matter from "gray-matter";
+import { findStaticContentBySlug } from "./static-content.js";
 
 function safelyDecodeSlug(value: string) {
   try {
@@ -56,5 +57,5 @@ export async function findContentFileBySlug(
     }
   }
 
-  return null;
+  return findStaticContentBySlug(directory, normalizedSlug);
 }

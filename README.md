@@ -14,7 +14,7 @@ MyBlog is a content-driven Next.js site with three public content surfaces, an a
 
 ## Stack
 
-- Next.js 16.2.1
+- Next.js 16.2.3
 - React 19
 - Tailwind CSS 4
 - Framer Motion
@@ -51,6 +51,20 @@ npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
+
+## Cloudflare Workers Deployment
+
+Cloudflare deployments are read-only for this repo's file-backed publishing model. Public posts, projects, and resources are bundled at build time through `src/content/generated/static-content-registry.*`, so update MDX locally, commit, and redeploy.
+
+Production builds use Webpack because the current OpenNext Cloudflare adapter does not reliably load Next 16 Turbopack server chunks in the Worker runtime.
+
+Use this build command in Cloudflare:
+
+```powershell
+npm run cf:build
+```
+
+Online `/editor` publishing, deletion, and message persistence require moving storage to D1/R2 or another durable service. On Workers, those write APIs return `501` instead of attempting to write into the deployed bundle.
 
 ## Verification
 

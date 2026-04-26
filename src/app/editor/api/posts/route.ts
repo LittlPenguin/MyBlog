@@ -6,6 +6,7 @@ import {
   updateEditorContentFile,
 } from "@/lib/content";
 import { isAdminRequest } from "@/lib/admin-auth-server";
+import { isCloudflareRuntime } from "@/lib/runtime-environment";
 import {
   type EditorSubmitPayload,
   validateEditorDraft,
@@ -27,6 +28,16 @@ async function toUploadedFile(file: File): Promise<EditorUploadedFile> {
 }
 
 export async function POST(request: Request) {
+  if (isCloudflareRuntime()) {
+    return NextResponse.json<EditorWriteResult>(
+      {
+        ok: false,
+        message: "Cloudflare deployment is read-only for file-based publishing. Edit content locally and redeploy, or migrate publishing storage to D1/R2.",
+      },
+      { status: 501 },
+    );
+  }
+
   if (!(await isAdminRequest())) {
     return NextResponse.json<EditorWriteResult>(
       {
@@ -116,6 +127,16 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  if (isCloudflareRuntime()) {
+    return NextResponse.json<EditorDeleteResult>(
+      {
+        ok: false,
+        message: "Cloudflare deployment is read-only for file-based publishing. Delete content locally and redeploy, or migrate publishing storage to D1/R2.",
+      },
+      { status: 501 },
+    );
+  }
+
   if (!(await isAdminRequest())) {
     return NextResponse.json<EditorDeleteResult>(
       {
