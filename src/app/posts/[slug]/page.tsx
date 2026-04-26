@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { AdminDeleteButton } from "@/components/site/admin-delete-button";
 import { DetailBackLink, DetailPageShell, DetailRelatedSection } from "@/components/site/detail-shell";
+import { MarkdownContent } from "@/components/site/markdown-content";
 import { isAdminRequest } from "@/lib/admin-auth-server";
 import { buildDetailMetaChips, resolveDetailSummary } from "@/lib/detail-shell";
 import { buildEditorLoadHref } from "@/lib/editor";
@@ -90,7 +91,7 @@ export default async function PostPage({ params, searchParams }: PageProps) {
       title={post.meta.title}
       summary={<p>{summary}</p>}
       metaChips={buildDetailMetaChips([formatDate(post.meta.date), post.meta.readingMinutes, ...post.meta.tags])}
-      body={<div className="prose-sunset max-w-none">{post.content}</div>}
+      body={<MarkdownContent source={post.rawContent} />}
       related={<DetailRelatedSection title="继续阅读" items={relatedItems} />}
     />
   );

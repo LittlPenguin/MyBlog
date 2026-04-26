@@ -2,11 +2,6 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import matter from "gray-matter";
 import readingTime from "reading-time";
-import { compileMDX } from "next-mdx-remote/rsc";
-import rehypeAutolinkHeadings from "rehype-autolink-headings";
-import rehypeSlug from "rehype-slug";
-import remarkGfm from "remark-gfm";
-import { MDXComponents } from "@/components/mdx/components";
 import { findContentFileBySlug, normalizeContentSlug } from "./content-slug.js";
 import { getStaticContentEntries } from "./static-content.js";
 
@@ -72,39 +67,16 @@ export async function getPostBySlug(slug: string) {
     throw new Error(`Post not found for slug: ${slug}`);
   }
   const source = match.source;
-  const { content } = matter(source);
+  const { data, content } = matter(source);
   const normalizedSlug = normalizeContentSlug(slug);
-
-  const { frontmatter, content: compiledContent } = await compileMDX<PostFrontmatter>({
-    source,
-    components: MDXComponents,
-    options: {
-      parseFrontmatter: true,
-      mdxOptions: {
-        remarkPlugins: [remarkGfm],
-        rehypePlugins: [
-          rehypeSlug,
-          [
-            rehypeAutolinkHeadings,
-            {
-              behavior: "append",
-              properties: {
-                className: ["anchor-link"],
-              },
-            },
-          ],
-        ],
-      },
-    },
-  });
 
   return {
     meta: {
-      ...frontmatter,
+      ...(data as PostFrontmatter),
       slug: normalizedSlug,
       readingMinutes: `${Math.max(1, Math.ceil(readingTime(content).minutes))} min read`,
     } satisfies PostMeta,
-    content: compiledContent,
+    rawContent: content,
   };
 }
 
