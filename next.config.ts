@@ -1,4 +1,5 @@
 import createMDX from "@next/mdx";
+import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
 import type { NextConfig } from "next";
 
 const withMDX = createMDX({
@@ -13,5 +14,7 @@ const nextConfig: NextConfig = {
     instantNavigationDevToolsToggle: true,
   },
 };
+
+initOpenNextCloudflareForDev();
 
 export default withMDX(nextConfig);

@@ -15,6 +15,7 @@
 
 # next.js
 /.next/
+/.open-next/
 /out/
 
 # production
@@ -51,6 +52,9 @@ next-env.d.ts
 
 # local Codex state
 /.codex/
+
+# local Cloudflare state
+/.wrangler/
 
 # runtime messages
 /src/content/messages/*.json
