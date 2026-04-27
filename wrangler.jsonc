@@ -8,6 +8,19 @@
     "directory": ".open-next/assets",
     "binding": "ASSETS"
   },
+  "d1_databases": [
+    {
+      "binding": "MYBLOG_DB",
+      "database_name": "myblog",
+      "database_id": "REPLACE_WITH_D1_DATABASE_ID"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "MYBLOG_ASSETS",
+      "bucket_name": "myblog-assets"
+    }
+  ],
   "vars": {
     "MYBLOG_FILE_STORAGE": "readonly",
     "MYBLOG_GITHUB_REPOSITORY": "LittlPenguin/MyBlog",

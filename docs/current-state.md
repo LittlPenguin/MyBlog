@@ -47,7 +47,8 @@ This file summarizes the current product state for new Codex sessions and parall
 - Editor publishing is handled by `src/app/editor/api/posts/route.ts`, which writes files through the shared content helpers in `src/lib/content.ts`.
 - Content deletion also flows through the editor API and removes the matching content file plus its uploads directory.
 - Cloudflare Workers deployments bundle public MDX content into `src/content/generated/static-content-registry.*` before build so public collection pages do not depend on runtime filesystem reads.
-- Cloudflare Workers deployments cannot mutate the deployed bundle. `/editor` publish/delete APIs write content changes back to GitHub when `MYBLOG_GITHUB_REPOSITORY`, `MYBLOG_GITHUB_BRANCH`, and secret `MYBLOG_GITHUB_TOKEN` are configured, then Cloudflare's Git deployment rebuilds from `main`.
+- Cloudflare Workers deployments cannot mutate the deployed bundle. Online `/editor` publish/delete APIs write content directly to Cloudflare D1 when `MYBLOG_DB` is bound, and uploaded covers/assets are written to R2 when `MYBLOG_ASSETS` is bound.
+- The legacy GitHub publishing path remains available only as a fallback when D1 is not bound and GitHub publishing variables/secrets are configured.
 - Visitor messages are stored separately from MDX content under `src/content/messages`.
 - Each message is persisted as one JSON file with:
   - `id`
@@ -96,7 +97,7 @@ This file summarizes the current product state for new Codex sessions and parall
 - Successful submission clears the form and shows confirmation feedback.
 - Validation and network failures preserve user input and show inline error or failure feedback.
 - Messages are not shown publicly, do not send email, and do not support replies or spam controls in the current version.
-- Cloudflare Workers deployments do not persist file-backed messages; message write/manage APIs return `501` until the message store is migrated to durable storage.
+- Cloudflare Workers deployments persist visitor messages in D1 when `MYBLOG_DB` is bound. Without D1, the message write/manage APIs keep returning `501` instead of attempting to write into the deployed bundle.
 
 ## Archive State
 
@@ -131,7 +132,7 @@ This file summarizes the current product state for new Codex sessions and parall
 - `main` is the active baseline. Old Codex branches should not be used to infer the current state.
 - Production builds use `next build --webpack` because the OpenNext Cloudflare runtime path currently does not reliably load Next 16 Turbopack server chunks.
 - `npm run cf:build` is the supported Cloudflare build command because it refreshes the static content registry before OpenNext packages the Worker.
-- Online editor publishing on Cloudflare requires runtime secrets, not only build variables: `ADMIN_ACCESS_CODE`, `ADMIN_SESSION_SECRET`, and `MYBLOG_GITHUB_TOKEN`.
+- Online editor publishing on Cloudflare requires runtime secrets for admin access and Worker bindings for storage: `ADMIN_ACCESS_CODE`, `ADMIN_SESSION_SECRET`, `MYBLOG_DB`, and optionally `MYBLOG_ASSETS`.
 - `.codex/` is local workspace state and should not be committed unless explicitly requested.
 
 ## Development Baseline

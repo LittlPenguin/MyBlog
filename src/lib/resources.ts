@@ -1,7 +1,7 @@
 import path from "node:path";
 import matter from "gray-matter";
 import { findContentFileBySlug, normalizeContentSlug } from "./content-slug.js";
-import { readCollectionItems } from "./content.js";
+import { readCollectionItems, readContentBySlugWithD1Fallback, readContentCollectionWithD1Fallback } from "./content.js";
 import {
   ALL_RESOURCES_CATEGORY,
   normalizeResourceFiltersWithCategories,
@@ -38,7 +38,10 @@ function normalizeResourceItem(resource: Partial<ResourceItem> & Pick<ResourceIt
 }
 
 export async function getAllResources() {
-  const items = await readCollectionItems<ResourceItem>(RESOURCES_DIR);
+  const items = await readContentCollectionWithD1Fallback<ResourceItem>({
+    category: "resource",
+    fallback: () => readCollectionItems<ResourceItem>(RESOURCES_DIR),
+  });
 
   return items
     .map((item) => normalizeResourceItem(item.meta))
@@ -57,17 +60,34 @@ export async function getResourceBySlug(slug: string) {
 }
 
 export async function getResourceDetailBySlug(slug: string) {
-  const match = await findContentFileBySlug(RESOURCES_DIR, slug);
-  if (!match) {
+  const item = await readContentBySlugWithD1Fallback<ResourceItem>({
+    category: "resource",
+    slug,
+    fallback: async () => {
+      const match = await findContentFileBySlug(RESOURCES_DIR, slug);
+
+      if (!match) {
+        return null;
+      }
+
+      const { data, content } = matter(match.source);
+      return {
+        meta: data as ResourceItem,
+        content,
+        filePath: match.filePath,
+      };
+    },
+  });
+
+  if (!item) {
     return null;
   }
 
-  const { data, content } = matter(match.source);
-  const meta = normalizeResourceItem(data as ResourceItem);
+  const meta = normalizeResourceItem(item.meta as ResourceItem);
 
   return {
     meta,
-    rawContent: content,
+    rawContent: item.content,
   };
 }
 

@@ -3,6 +3,8 @@ import { isAdminRequest } from "@/lib/admin-auth-server";
 import { createMessage, readAllMessages, validateMessageInput } from "@/lib/messages";
 import type { MessageCreateResponse, MessageListResponse } from "@/lib/messages-shared";
 import { isCloudflareRuntime } from "@/lib/runtime-environment";
+import { getD1Binding } from "@/lib/cloudflare-bindings";
+import { listD1Messages, saveD1Message } from "@/lib/cloudflare-content-store";
 import { apiMessageRootDir, revalidateMessageRoutes } from "./shared";
 
 export async function GET() {
@@ -16,7 +18,8 @@ export async function GET() {
     );
   }
 
-  const items = await readAllMessages(apiMessageRootDir());
+  const db = getD1Binding();
+  const items = db ? await listD1Messages(db) : await readAllMessages(apiMessageRootDir());
   return NextResponse.json<MessageListResponse>({
     ok: true,
     items,
@@ -24,7 +27,9 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  if (isCloudflareRuntime()) {
+  const db = getD1Binding();
+
+  if (isCloudflareRuntime() && !db) {
     return NextResponse.json<MessageCreateResponse>(
       {
         ok: false,
@@ -58,10 +63,17 @@ export async function POST(request: Request) {
     return NextResponse.json<MessageCreateResponse>(validation, { status: 422 });
   }
 
-  await createMessage({
-    rootDir: apiMessageRootDir(),
-    input: validation.value,
-  });
+  if (db) {
+    await saveD1Message({
+      db,
+      input: validation.value,
+    });
+  } else {
+    await createMessage({
+      rootDir: apiMessageRootDir(),
+      input: validation.value,
+    });
+  }
   revalidateMessageRoutes();
 
   return NextResponse.json<MessageCreateResponse>({

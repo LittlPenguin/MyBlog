@@ -2,12 +2,18 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import matter from "gray-matter";
 import readingTime from "reading-time";
+import type { BaseContentFrontmatter } from "./content-shared";
 import { findContentFileBySlug, normalizeContentSlug } from "./content-slug.js";
+import {
+  readCollectionItems,
+  readContentBySlugWithD1Fallback,
+  readContentCollectionWithD1Fallback,
+} from "./content.js";
 import { getStaticContentEntries } from "./static-content.js";
 
 const POSTS_DIR = path.join(process.cwd(), "src", "content", "posts");
 
-export type PostFrontmatter = {
+export type PostFrontmatter = BaseContentFrontmatter & {
   title: string;
   slug: string;
   summary: string;
@@ -28,11 +34,20 @@ export async function getPostSlugs() {
 }
 
 export async function getAllPosts() {
-  const slugs = await getPostSlugs();
-  const posts = await Promise.all(slugs.map((slug) => getPostMeta(slug)));
+  const items = await readContentCollectionWithD1Fallback<PostFrontmatter>({
+    category: "archive",
+    fallback: () => readCollectionItems<PostFrontmatter>(POSTS_DIR),
+  });
 
-  return posts
-    .filter((post): post is PostMeta => post !== null)
+  return items
+    .map((item) => {
+      const stats = readingTime(item.content);
+
+      return {
+        ...item.meta,
+        readingMinutes: `${Math.max(1, Math.ceil(stats.minutes))} min read`,
+      } satisfies PostMeta;
+    })
     .sort((a, b) => +new Date(b.date) - +new Date(a.date));
 }
 
@@ -62,21 +77,37 @@ export async function getPostMeta(slug: string) {
 }
 
 export async function getPostBySlug(slug: string) {
-  const match = await findContentFileBySlug(POSTS_DIR, slug);
-  if (!match) {
+  const item = await readContentBySlugWithD1Fallback<PostFrontmatter>({
+    category: "archive",
+    slug,
+    fallback: async () => {
+      const match = await findContentFileBySlug(POSTS_DIR, slug);
+
+      if (!match) {
+        return null;
+      }
+
+      const { data, content } = matter(match.source);
+      return {
+        meta: data as PostFrontmatter,
+        content,
+        filePath: match.filePath,
+      };
+    },
+  });
+
+  if (!item) {
     throw new Error(`Post not found for slug: ${slug}`);
   }
-  const source = match.source;
-  const { data, content } = matter(source);
   const normalizedSlug = normalizeContentSlug(slug);
 
   return {
     meta: {
-      ...(data as PostFrontmatter),
+      ...item.meta,
       slug: normalizedSlug,
-      readingMinutes: `${Math.max(1, Math.ceil(readingTime(content).minutes))} min read`,
+      readingMinutes: `${Math.max(1, Math.ceil(readingTime(item.content).minutes))} min read`,
     } satisfies PostMeta,
-    rawContent: content,
+    rawContent: item.content,
   };
 }
 

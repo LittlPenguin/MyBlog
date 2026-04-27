@@ -3,6 +3,8 @@ import { isAdminRequest } from "@/lib/admin-auth-server";
 import { markMessageAsRead } from "@/lib/messages";
 import type { MessageMutationResponse } from "@/lib/messages-shared";
 import { isCloudflareRuntime } from "@/lib/runtime-environment";
+import { getD1Binding } from "@/lib/cloudflare-bindings";
+import { markD1MessageAsRead } from "@/lib/cloudflare-content-store";
 import { apiMessageRootDir, revalidateMessageRoutes } from "../../shared";
 
 type RouteProps = {
@@ -12,7 +14,9 @@ type RouteProps = {
 };
 
 export async function POST(_request: Request, { params }: RouteProps) {
-  if (isCloudflareRuntime()) {
+  const db = getD1Binding();
+
+  if (isCloudflareRuntime() && !db) {
     return NextResponse.json<MessageMutationResponse>(
       {
         ok: false,
@@ -33,10 +37,15 @@ export async function POST(_request: Request, { params }: RouteProps) {
   }
 
   const { id } = await params;
-  const item = await markMessageAsRead({
-    rootDir: apiMessageRootDir(),
-    id,
-  });
+  const item = db
+    ? await markD1MessageAsRead({
+        db,
+        id,
+      })
+    : await markMessageAsRead({
+        rootDir: apiMessageRootDir(),
+        id,
+      });
 
   if (!item) {
     return NextResponse.json<MessageMutationResponse>(

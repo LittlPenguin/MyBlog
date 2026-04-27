@@ -17,6 +17,13 @@ import {
 } from "./editor.js";
 import type { EditorWriteResult } from "./publish-shared";
 import { readStaticContentCollection } from "./static-content.js";
+import { getD1Binding, type D1DatabaseBinding } from "./cloudflare-bindings.js";
+import {
+  getD1ContentBySlug,
+  hasAnyD1Content,
+  hasD1ContentRow,
+  listD1Content,
+} from "./cloudflare-content-store.js";
 
 export const CONTENT_CATEGORY_DIRECTORY = {
   archive: "posts",
@@ -236,6 +243,52 @@ export async function readCollectionItems<T extends BaseContentFrontmatter = Bas
   const items = await Promise.all(files.map((filePath) => parseContentCollectionItem<T>(filePath)));
 
   return items.sort((a, b) => +new Date(b.meta.date) - +new Date(a.meta.date));
+}
+
+export async function readContentCollectionWithD1Fallback<T extends BaseContentFrontmatter = BaseContentFrontmatter>({
+  db = getD1Binding(),
+  category,
+  fallback,
+}: {
+  db?: D1DatabaseBinding | null;
+  category: EditorCategory;
+  fallback: () => Promise<ContentCollectionItem<T>[]>;
+}) {
+  if (db) {
+    const items = await listD1Content<T>(db, category);
+
+    if (items.length > 0 || (await hasAnyD1Content(db, category))) {
+      return items;
+    }
+  }
+
+  return fallback();
+}
+
+export async function readContentBySlugWithD1Fallback<T extends BaseContentFrontmatter = BaseContentFrontmatter>({
+  db = getD1Binding(),
+  category,
+  slug,
+  fallback,
+}: {
+  db?: D1DatabaseBinding | null;
+  category: EditorCategory;
+  slug: string;
+  fallback: () => Promise<ContentCollectionItem<T> | null>;
+}) {
+  if (db) {
+    const item = await getD1ContentBySlug<T>(db, category, slug);
+
+    if (item) {
+      return item;
+    }
+
+    if (await hasD1ContentRow(db, category, slug)) {
+      return null;
+    }
+  }
+
+  return fallback();
 }
 
 function getAbsoluteContentFilePath({

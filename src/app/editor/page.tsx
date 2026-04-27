@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { getPersistedEditorDraftBySource } from "@/lib/content";
 import { sanitizeAdminNextPath } from "@/lib/admin-auth";
 import { isAdminRequest } from "@/lib/admin-auth-server";
+import { getD1Binding } from "@/lib/cloudflare-bindings";
+import { getD1EditorDraftBySource } from "@/lib/cloudflare-content-store";
 import {
   createEmptyEditorDraft,
   type EditorCategory,
@@ -54,11 +56,18 @@ export default async function EditorPage({ searchParams }: PageProps) {
   let initialMessage: string | null = null;
 
   if (isEditorCategory(requestedCategory) && requestedSlug) {
-    const loaded = await getPersistedEditorDraftBySource({
-      rootDir: editorContentRootDir(),
-      category: requestedCategory,
-      slug: requestedSlug,
-    });
+    const source = {
+      originalCategory: requestedCategory,
+      originalSlug: requestedSlug,
+    };
+    const db = getD1Binding();
+    const loaded = db
+      ? await getD1EditorDraftBySource(db, source)
+      : await getPersistedEditorDraftBySource({
+          rootDir: editorContentRootDir(),
+          category: requestedCategory,
+          slug: requestedSlug,
+        });
 
     if (loaded) {
       initialDraft = loaded.draft;

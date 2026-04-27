@@ -54,17 +54,29 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ## Cloudflare Workers Deployment
 
-Cloudflare deployments cannot write directly into the deployed Worker bundle. Public posts, projects, and resources are bundled at build time through `src/content/generated/static-content-registry.*`.
+Cloudflare deployments cannot write directly into the deployed Worker bundle. Public posts, projects, and resources are still bundled at build time through `src/content/generated/static-content-registry.*` as a fallback, but the online runtime uses Cloudflare D1/R2 when these bindings are configured:
 
-Online `/editor` publishing on Cloudflare writes content back to the GitHub repository, then Cloudflare's Git integration rebuilds the Worker from `main`. Configure these Worker runtime variables/secrets before using online publishing:
+- `MYBLOG_DB`: D1 database binding for posts, projects, resources, and visitor messages
+- `MYBLOG_ASSETS`: R2 bucket binding for editor-uploaded covers and attachments
+
+Create and initialize the storage:
+
+```powershell
+npx wrangler d1 create myblog
+npx wrangler r2 bucket create myblog-assets
+npx wrangler d1 execute myblog --remote --file migrations/0001_d1_r2_content.sql
+node scripts/export-content-for-d1.mjs > .\d1-content-import.sql
+npx wrangler d1 execute myblog --remote --file .\d1-content-import.sql
+```
+
+After creating the D1 database, replace `REPLACE_WITH_D1_DATABASE_ID` in `wrangler.jsonc` with the database id returned by Wrangler or set the same binding in the Cloudflare dashboard.
+
+Configure these Worker runtime secrets before using admin and editor flows:
 
 - `ADMIN_ACCESS_CODE`
 - `ADMIN_SESSION_SECRET`
-- `MYBLOG_GITHUB_REPOSITORY`, for example `LittlPenguin/MyBlog`
-- `MYBLOG_GITHUB_BRANCH`, usually `main`
-- `MYBLOG_GITHUB_TOKEN`, as a secret with repository Contents read/write permission
 
-If `MYBLOG_GITHUB_TOKEN` is missing, online publishing and deletion return a configuration error instead of trying to write files locally.
+When D1 is bound, online `/editor` publishing writes content directly to D1 and uploads files to R2. Newly published content is visible without a GitHub commit/rebuild cycle. If D1 is not bound, public pages fall back to bundled static content and the legacy GitHub publishing path can still be used when its variables are configured.
 
 Production builds use Webpack because the current OpenNext Cloudflare adapter does not reliably load Next 16 Turbopack server chunks in the Worker runtime.
 
@@ -74,7 +86,7 @@ Use this build command in Cloudflare:
 npm run cf:build
 ```
 
-Message persistence still requires moving storage to D1/R2 or another durable service. On Workers, message write/manage APIs return `501` instead of attempting to write into the deployed bundle.
+Visitor messages use D1 on Workers when `MYBLOG_DB` is bound. Local development continues to use JSON files under `src/content/messages`.
 
 ## Verification
 

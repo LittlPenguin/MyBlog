@@ -2,7 +2,7 @@ import path from "node:path";
 import matter from "gray-matter";
 import type { ProjectContentFrontmatter } from "./content-shared";
 import { findContentFileBySlug, normalizeContentSlug } from "./content-slug.js";
-import { readCollectionItems } from "./content.js";
+import { readCollectionItems, readContentBySlugWithD1Fallback, readContentCollectionWithD1Fallback } from "./content.js";
 
 const PROJECTS_DIR = path.join(process.cwd(), "src", "content", "projects");
 
@@ -27,7 +27,10 @@ function normalizeProjectItem(
 }
 
 export async function getAllProjects() {
-  const items = await readCollectionItems<ProjectFrontmatter>(PROJECTS_DIR);
+  const items = await readContentCollectionWithD1Fallback<ProjectFrontmatter>({
+    category: "project",
+    fallback: () => readCollectionItems<ProjectFrontmatter>(PROJECTS_DIR),
+  });
 
   return items
     .map((item) => normalizeProjectItem(item.meta))
@@ -46,16 +49,33 @@ export async function getProjectBySlug(slug: string) {
 }
 
 export async function getProjectDetailBySlug(slug: string) {
-  const match = await findContentFileBySlug(PROJECTS_DIR, slug);
-  if (!match) {
+  const item = await readContentBySlugWithD1Fallback<ProjectFrontmatter>({
+    category: "project",
+    slug,
+    fallback: async () => {
+      const match = await findContentFileBySlug(PROJECTS_DIR, slug);
+
+      if (!match) {
+        return null;
+      }
+
+      const { data, content } = matter(match.source);
+      return {
+        meta: data as ProjectFrontmatter,
+        content,
+        filePath: match.filePath,
+      };
+    },
+  });
+
+  if (!item) {
     return null;
   }
 
-  const { data, content } = matter(match.source);
-  const meta = normalizeProjectItem(data as ProjectItem);
+  const meta = normalizeProjectItem(item.meta as ProjectItem);
 
   return {
     meta,
-    rawContent: content,
+    rawContent: item.content,
   };
 }

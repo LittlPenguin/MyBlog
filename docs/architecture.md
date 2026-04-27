@@ -24,7 +24,7 @@ This document maps the main subsystems that new agents need before changing beha
 - Server-side session validation is handled by `src/lib/admin-auth-server.ts`.
 - Token signing, access-code validation, and next-path sanitization live in `src/lib/admin-auth.ts`.
 - Editor writes and deletes now require an active admin session.
-- On Cloudflare Workers, deployed bundles remain read-only. Editor writes and deletes are converted into GitHub commits when GitHub publishing variables/secrets are configured, and Cloudflare rebuilds from the updated `main` branch.
+- On Cloudflare Workers, deployed bundles remain read-only. Editor writes and deletes use Cloudflare D1 when `MYBLOG_DB` is bound, and editor-uploaded covers/assets use R2 when `MYBLOG_ASSETS` is bound. The older GitHub commit publishing path remains only as a fallback when D1 is unavailable.
 
 ## Editor Publishing Flow
 
@@ -45,7 +45,7 @@ This document maps the main subsystems that new agents need before changing beha
   4. Related routes are revalidated and the client redirects to the collection page
 - Category-specific fields are written into frontmatter only for the relevant collection.
 - Existing content can be reloaded into the editor from category + slug query parameters.
-- Cloudflare deployments can read bundled existing content for public routes. Editor changes are persisted by committing generated MDX and uploaded assets back to GitHub; message persistence still needs a durable store such as D1/R2.
+- Cloudflare deployments can read bundled existing content for public routes as a fallback. When D1 is bound, public content readers prefer D1 rows over bundled static content. Editor changes are persisted directly into D1/R2, and visitor messages also use D1 on Workers.
 
 ## Public Routes
 

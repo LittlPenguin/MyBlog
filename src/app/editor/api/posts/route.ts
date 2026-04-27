@@ -10,6 +10,12 @@ import {
 import { findContentFileBySlug } from "@/lib/content-slug";
 import { isAdminRequest } from "@/lib/admin-auth-server";
 import { isCloudflareRuntime } from "@/lib/runtime-environment";
+import { getD1Binding, getR2Binding } from "@/lib/cloudflare-bindings";
+import {
+  deleteD1Content,
+  getD1ContentBySlug,
+  saveD1Content,
+} from "@/lib/cloudflare-content-store";
 import {
   buildGitHubEditorDeletePlan,
   buildGitHubEditorPublishPlan,
@@ -114,6 +120,59 @@ export async function POST(request: Request) {
   }
 
   if (isCloudflareRuntime()) {
+    const db = getD1Binding();
+
+    if (db) {
+      const targetExisting = await getD1ContentBySlug(db, prepared.category, prepared.slug);
+      const isSameSource =
+        prepared.source &&
+        prepared.source.originalCategory === prepared.category &&
+        prepared.source.originalSlug === prepared.slug;
+
+      if (targetExisting && !isSameSource) {
+        return NextResponse.json<EditorWriteResult>(
+          {
+            ok: false,
+            message: "slug already exists. Please choose another slug.",
+            errors: {
+              slug: "Current slug already exists.",
+            },
+          },
+          { status: 422 },
+        );
+      }
+
+      const bucket = getR2Binding();
+      const result = await saveD1Content({
+        db,
+        bucket,
+        payload: prepared,
+        coverUpload,
+        assetUploads,
+      });
+
+      if (
+        result.ok &&
+        prepared.source &&
+        (prepared.source.originalCategory !== result.category || prepared.source.originalSlug !== result.slug)
+      ) {
+        await deleteD1Content({
+          db,
+          bucket,
+          source: prepared.source,
+        });
+        revalidatePreviousContentRoute(prepared.source.originalCategory, prepared.source.originalSlug);
+      }
+
+      if (result.ok) {
+        revalidateEditorContentRoutes(result.category, result.slug);
+      }
+
+      return NextResponse.json<EditorWriteResult>(result, {
+        status: result.ok ? 200 : 422,
+      });
+    }
+
     const config = readGitHubPublishConfig();
 
     if (!config) {
@@ -216,6 +275,23 @@ export async function DELETE(request: Request) {
   }
 
   if (isCloudflareRuntime()) {
+    const db = getD1Binding();
+
+    if (db) {
+      const result = await deleteD1Content({
+        db,
+        bucket: getR2Binding(),
+        source,
+      });
+
+      revalidateEditorContentRoutes(source.originalCategory, source.originalSlug);
+      revalidatePreviousContentRoute(source.originalCategory, source.originalSlug);
+
+      return NextResponse.json<EditorDeleteResult>(result, {
+        status: 200,
+      });
+    }
+
     const config = readGitHubPublishConfig();
 
     if (!config) {

@@ -3,6 +3,8 @@ import { isAdminRequest } from "@/lib/admin-auth-server";
 import { deleteMessage } from "@/lib/messages";
 import type { MessageDeleteResponse } from "@/lib/messages-shared";
 import { isCloudflareRuntime } from "@/lib/runtime-environment";
+import { getD1Binding } from "@/lib/cloudflare-bindings";
+import { deleteD1Message } from "@/lib/cloudflare-content-store";
 import { apiMessageRootDir, revalidateMessageRoutes } from "../shared";
 
 type RouteProps = {
@@ -12,7 +14,9 @@ type RouteProps = {
 };
 
 export async function DELETE(_request: Request, { params }: RouteProps) {
-  if (isCloudflareRuntime()) {
+  const db = getD1Binding();
+
+  if (isCloudflareRuntime() && !db) {
     return NextResponse.json<MessageDeleteResponse>(
       {
         ok: false,
@@ -33,10 +37,12 @@ export async function DELETE(_request: Request, { params }: RouteProps) {
   }
 
   const { id } = await params;
-  const deleted = await deleteMessage({
-    rootDir: apiMessageRootDir(),
-    id,
-  });
+  const deleted = db
+    ? await deleteD1Message(db, id)
+    : await deleteMessage({
+        rootDir: apiMessageRootDir(),
+        id,
+      });
 
   if (!deleted) {
     return NextResponse.json<MessageDeleteResponse>(
