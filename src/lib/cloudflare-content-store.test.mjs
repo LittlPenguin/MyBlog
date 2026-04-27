@@ -37,6 +37,13 @@ function createFakeD1() {
           return this;
         },
         async all() {
+          if (sql.includes("SELECT COUNT(*) AS count") && sql.includes("FROM content_items")) {
+            const collection = values[0];
+            const slug = values[1];
+            const count = contentRows.filter((row) => row.collection === collection && row.slug === slug).length;
+            return { results: [{ count }] };
+          }
+
           if (sql.includes("SELECT slug") && sql.includes("FROM content_items")) {
             let rows = contentRows;
 
@@ -137,6 +144,32 @@ function createFakeD1() {
             const row = contentRows.find((item) => item.collection === collection && item.slug === slug);
             if (row) {
               row.deleted_at = values[0];
+            }
+          }
+
+          if (sql.includes("INSERT INTO content_items") && sql.includes("deleted_at")) {
+            const row = {
+              collection: values[0],
+              slug: values[1],
+              title: values[2],
+              summary: values[3],
+              category: values[4],
+              tags_json: values[5],
+              frontmatter_json: values[6],
+              body: values[7],
+              source: values[8],
+              published_at: values[9],
+              updated_at: values[10],
+              deleted_at: values[11],
+            };
+            row.frontmatter = JSON.parse(row.frontmatter_json);
+            const index = contentRows.findIndex(
+              (item) => item.collection === row.collection && item.slug === row.slug,
+            );
+            if (index >= 0) {
+              contentRows[index] = row;
+            } else {
+              contentRows.push(row);
             }
           }
 
@@ -369,9 +402,7 @@ test("content readers prefer D1 when rows exist and fall back when D1 is empty",
   const d1Items = await readContentCollectionWithD1Fallback({
     db,
     category: "archive",
-    fallback: async () => {
-      throw new Error("fallback should not be used when D1 has rows");
-    },
+    fallback: async () => [],
   });
 
   assert.equal(d1Items[0].meta.slug, "d1-note");
@@ -408,6 +439,83 @@ test("content readers prefer D1 when rows exist and fall back when D1 is empty",
   });
 
   assert.equal(fallbackDetail?.meta.title, "Fallback Detail");
+});
+
+test("collection readers merge D1 overrides with bundled fallback content", async () => {
+  const db = createFakeD1();
+
+  await saveD1Content({
+    db,
+    payload: createDraft({
+      title: "Updated Bundled Note",
+      slug: "bundled-note",
+      content: "# Updated Bundled Note",
+    }),
+    now: () => "2026-04-21T10:00:00.000Z",
+  });
+  await deleteD1Content({
+    db,
+    source: {
+      originalCategory: "archive",
+      originalSlug: "deleted-bundled-note",
+    },
+    now: () => "2026-04-22T10:00:00.000Z",
+  });
+
+  const items = await readContentCollectionWithD1Fallback({
+    db,
+    category: "archive",
+    fallback: async () => [
+      {
+        meta: {
+          title: "Bundled Note",
+          slug: "bundled-note",
+          summary: "Original bundled content",
+          date: "2026-04-19",
+          category: "Fallback",
+          tags: [],
+          featured: false,
+          assetNames: [],
+        },
+        content: "# Bundled Note",
+        filePath: "bundled-note.mdx",
+      },
+      {
+        meta: {
+          title: "Deleted Bundled Note",
+          slug: "deleted-bundled-note",
+          summary: "This should be hidden by a tombstone",
+          date: "2026-04-19",
+          category: "Fallback",
+          tags: [],
+          featured: false,
+          assetNames: [],
+        },
+        content: "# Deleted Bundled Note",
+        filePath: "deleted-bundled-note.mdx",
+      },
+      {
+        meta: {
+          title: "Untouched Bundled Note",
+          slug: "untouched-bundled-note",
+          summary: "Still visible",
+          date: "2026-04-18",
+          category: "Fallback",
+          tags: [],
+          featured: false,
+          assetNames: [],
+        },
+        content: "# Untouched Bundled Note",
+        filePath: "untouched-bundled-note.mdx",
+      },
+    ],
+  });
+
+  assert.deepEqual(
+    items.map((item) => item.meta.slug),
+    ["bundled-note", "untouched-bundled-note"],
+  );
+  assert.equal(items[0].meta.title, "Updated Bundled Note");
 });
 
 test("content readers do not fall back to bundled content after a D1 delete tombstone", async () => {
@@ -471,6 +579,44 @@ test("content readers do not fall back to bundled content after a D1 delete tomb
   });
 
   assert.deepEqual(items, []);
+});
+
+test("D1 delete creates a tombstone when bundled fallback content was never imported", async () => {
+  const db = createFakeD1();
+
+  const deleted = await deleteD1Content({
+    db,
+    source: {
+      originalCategory: "archive",
+      originalSlug: "bundled-only-note",
+    },
+    now: () => "2026-04-22T10:00:00.000Z",
+  });
+
+  assert.equal(deleted.ok, true);
+  assert.equal(deleted.createdTombstone, true);
+
+  const detail = await readContentBySlugWithD1Fallback({
+    db,
+    category: "archive",
+    slug: "bundled-only-note",
+    fallback: async () => ({
+      meta: {
+        title: "Bundled Only Note",
+        slug: "bundled-only-note",
+        summary: "This should stay hidden after a D1 tombstone.",
+        date: "2026-04-19",
+        category: "Fallback",
+        tags: [],
+        featured: false,
+        assetNames: [],
+      },
+      content: "# Bundled Only Note",
+      filePath: "bundled-only-note.mdx",
+    }),
+  });
+
+  assert.equal(detail, null);
 });
 
 test("Cloudflare publishing rejects new uploaded assets when no R2 bucket is bound", () => {

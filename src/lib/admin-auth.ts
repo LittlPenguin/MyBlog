@@ -63,6 +63,23 @@ export function createAdminSessionToken({ sessionSecret, expiresAt }: CreateToke
   return `${payload}.${signature}`;
 }
 
+export function createAdminSessionCookie(env: AdminEnvLike = process.env, now = Date.now()) {
+  const sessionSecret = getAdminSessionSecret(env);
+
+  if (!sessionSecret) {
+    return null;
+  }
+
+  return {
+    name: ADMIN_SESSION_COOKIE_NAME,
+    value: createAdminSessionToken({
+      sessionSecret,
+      expiresAt: now + ADMIN_SESSION_TTL_SECONDS * 1000,
+    }),
+    options: getAdminSessionCookieOptions(),
+  };
+}
+
 export function readAdminSessionToken(token: string, { sessionSecret, now = Date.now() }: ReadTokenOptions) {
   const [payload, signature] = token.split(".");
 

@@ -42,6 +42,7 @@ export function AdminClient({ initialNext, canManage, isConfigured }: AdminClien
       try {
         const response = await fetch("/admin/api/session", {
           method: "POST",
+          credentials: "same-origin",
           headers: {
             "content-type": "application/json",
           },
@@ -70,6 +71,7 @@ export function AdminClient({ initialNext, canManage, isConfigured }: AdminClien
       try {
         const response = await fetch("/admin/api/session", {
           method: "DELETE",
+          credentials: "same-origin",
         });
         const result = (await response.json()) as SessionResult;
 

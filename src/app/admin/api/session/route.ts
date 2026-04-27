@@ -1,13 +1,12 @@
 import { NextResponse } from "next/server";
 import {
+  ADMIN_SESSION_COOKIE_NAME,
+  createAdminSessionCookie,
+  getAdminSessionCookieOptions,
   hasAdminAccessConfig,
   isValidAdminAccessCode,
   sanitizeAdminNextPath,
 } from "@/lib/admin-auth";
-import {
-  clearAdminSessionCookie,
-  setAdminSessionCookie,
-} from "@/lib/admin-auth-server";
 
 type AdminSessionResult =
   | {
@@ -26,7 +25,12 @@ export async function POST(request: Request) {
         ok: false,
         message: "管理员访问码未配置。",
       },
-      { status: 503 },
+      {
+        status: 503,
+        headers: {
+          "Cache-Control": "no-store",
+        },
+      },
     );
   }
 
@@ -46,7 +50,12 @@ export async function POST(request: Request) {
         ok: false,
         message: "请求体必须是有效 JSON。",
       },
-      { status: 400 },
+      {
+        status: 400,
+        headers: {
+          "Cache-Control": "no-store",
+        },
+      },
     );
   }
 
@@ -56,23 +65,55 @@ export async function POST(request: Request) {
         ok: false,
         message: "管理员访问码无效。",
       },
-      { status: 401 },
+      {
+        status: 401,
+        headers: {
+          "Cache-Control": "no-store",
+        },
+      },
     );
   }
 
-  await setAdminSessionCookie();
+  const sessionCookie = createAdminSessionCookie();
 
-  return NextResponse.json<AdminSessionResult>({
+  if (!sessionCookie) {
+    return NextResponse.json<AdminSessionResult>(
+      {
+        ok: false,
+        message: "管理员会话密钥未配置。",
+      },
+      {
+        status: 503,
+        headers: {
+          "Cache-Control": "no-store",
+        },
+      },
+    );
+  }
+
+  const response = NextResponse.json<AdminSessionResult>({
     ok: true,
     redirectHref: next,
+  }, {
+    headers: {
+      "Cache-Control": "no-store",
+    },
   });
+  response.cookies.set(sessionCookie.name, sessionCookie.value, sessionCookie.options);
+
+  return response;
 }
 
 export async function DELETE() {
-  await clearAdminSessionCookie();
-
-  return NextResponse.json<AdminSessionResult>({
+  const response = NextResponse.json<AdminSessionResult>({
     ok: true,
     redirectHref: "/admin",
+  }, {
+    headers: {
+      "Cache-Control": "no-store",
+    },
   });
+  response.cookies.set(ADMIN_SESSION_COOKIE_NAME, "", getAdminSessionCookieOptions(0));
+
+  return response;
 }

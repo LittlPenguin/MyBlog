@@ -107,6 +107,33 @@ function getContentOutputPath(category: EditorCategory, slug: string) {
   return `d1://${categoryToCollection(category)}/${slug}`;
 }
 
+function createDeletedContentSource(source: EditorDraftSource, now: string) {
+  const slug = normalizeContentSlug(source.originalSlug);
+  const title = slug || "deleted-content";
+
+  return {
+    title,
+    slug,
+    summary: "",
+    category: "Deleted",
+    tags: [],
+    frontmatter: {
+      title,
+      slug,
+      summary: "",
+      date: now.slice(0, 10),
+      category: "Deleted",
+      tags: [],
+      featured: false,
+      assetNames: [],
+      assetPaths: [],
+    },
+    body: "",
+    source: `---\ntitle: ${JSON.stringify(title)}\nslug: ${JSON.stringify(slug)}\nsummary: ""\ndate: ${JSON.stringify(now.slice(0, 10))}\ncategory: Deleted\ntags: []\nfeatured: false\nassetNames: []\nassetPaths: []\n---\n`,
+    publishedAt: `${now.slice(0, 10)}T00:00:00.000Z`,
+  };
+}
+
 function contentRowToItem<T extends BaseContentFrontmatter = BaseContentFrontmatter>(
   row: ContentRow,
 ): ContentCollectionItem<T> {
@@ -400,23 +427,73 @@ export async function deleteD1Content({
   source: EditorDraftSource;
   now?: () => string;
 }) {
+  const deletedAt = now();
+  const collection = categoryToCollection(source.originalCategory);
+  const slug = normalizeContentSlug(source.originalSlug);
+
   await db
     .prepare(
       `UPDATE content_items
        SET deleted_at = ?1
        WHERE collection = ?2 AND slug = ?3`,
     )
-    .bind(now(), categoryToCollection(source.originalCategory), source.originalSlug)
+    .bind(deletedAt, collection, slug)
     .run();
 
+  const row = await db
+    .prepare(
+      `SELECT deleted_at
+       FROM content_items
+       WHERE collection = ?1 AND slug = ?2
+       LIMIT 1`,
+    )
+    .bind(collection, slug)
+    .first<{ deleted_at: string | null }>();
+  const createdTombstone = !row;
+
+  if (createdTombstone) {
+    const tombstone = createDeletedContentSource(
+      {
+        ...source,
+        originalSlug: slug,
+      },
+      deletedAt,
+    );
+
+    await db
+      .prepare(
+        `INSERT INTO content_items (
+          collection, slug, title, summary, category, tags_json, frontmatter_json, body, source, published_at, updated_at, deleted_at
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)
+        ON CONFLICT(collection, slug) DO UPDATE SET
+          deleted_at = excluded.deleted_at`,
+      )
+      .bind(
+        collection,
+        slug,
+        tombstone.title,
+        tombstone.summary,
+        tombstone.category,
+        JSON.stringify(tombstone.tags),
+        JSON.stringify(tombstone.frontmatter),
+        tombstone.body,
+        tombstone.source,
+        tombstone.publishedAt,
+        deletedAt,
+        deletedAt,
+      )
+      .run();
+  }
+
   if (bucket) {
-    await deleteR2Prefix(bucket, getR2UploadPrefix(source.originalCategory, source.originalSlug));
+    await deleteR2Prefix(bucket, getR2UploadPrefix(source.originalCategory, slug));
   }
 
   return {
     ok: true,
     message: "Content deleted from Cloudflare D1.",
     redirectHref: getRedirectHref(source),
+    createdTombstone,
   } as const;
 }
 

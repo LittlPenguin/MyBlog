@@ -122,5 +122,14 @@ test("admin client performs full document navigation after session changes", () 
   const adminClient = readFileSync(join(process.cwd(), "src/app/admin/admin-client.tsx"), "utf8");
 
   assert.match(adminClient, /window\.location\.assign\(result\.redirectHref\)/);
+  assert.match(adminClient, /credentials:\s*"same-origin"/);
   assert.doesNotMatch(adminClient, /router\.push\(result\.redirectHref\);\s*router\.refresh\(\);/);
+});
+
+test("admin session route writes session cookies directly on the response", () => {
+  const route = readFileSync(join(process.cwd(), "src/app/admin/api/session/route.ts"), "utf8");
+
+  assert.match(route, /createAdminSessionCookie/);
+  assert.match(route, /response\.cookies\.set/);
+  assert.match(route, /headers:\s*\{\s*"Cache-Control":\s*"no-store"/);
 });

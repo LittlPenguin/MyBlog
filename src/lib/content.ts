@@ -6,7 +6,7 @@ import type {
   ProjectContentFrontmatter,
   ResourceContentFrontmatter,
 } from "./content-shared";
-import { findContentFileBySlug } from "./content-slug.js";
+import { findContentFileBySlug, normalizeContentSlug } from "./content-slug.js";
 import type { EditorCategory, EditorDraft, EditorDraftSource, EditorFieldErrors } from "./editor-shared";
 import {
   buildAttachmentAssetReference,
@@ -256,10 +256,25 @@ export async function readContentCollectionWithD1Fallback<T extends BaseContentF
 }) {
   if (db) {
     const items = await listD1Content<T>(db, category);
+    const fallbackItems = await fallback();
 
-    if (items.length > 0 || (await hasAnyD1Content(db, category))) {
-      return items;
+    if (items.length === 0 && !(await hasAnyD1Content(db, category))) {
+      return fallbackItems;
     }
+
+    const merged = new Map(fallbackItems.map((item) => [normalizeContentSlug(item.meta.slug), item]));
+
+    for (const item of fallbackItems) {
+      if (await hasD1ContentRow(db, category, item.meta.slug)) {
+        merged.delete(normalizeContentSlug(item.meta.slug));
+      }
+    }
+
+    for (const item of items) {
+      merged.set(normalizeContentSlug(item.meta.slug), item);
+    }
+
+    return Array.from(merged.values()).sort((a, b) => +new Date(b.meta.date) - +new Date(a.meta.date));
   }
 
   return fallback();

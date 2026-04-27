@@ -63,7 +63,7 @@ Create and initialize the storage:
 ```powershell
 npx wrangler d1 create myblog
 npx wrangler d1 execute myblog --remote --file migrations/0001_d1_r2_content.sql
-node scripts/export-content-for-d1.mjs > .\d1-content-import.sql
+node scripts/export-content-for-d1.mjs | Out-File -FilePath .\d1-content-import.sql -Encoding utf8
 npx wrangler d1 execute myblog --remote --file .\d1-content-import.sql
 ```
 
