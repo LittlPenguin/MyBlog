@@ -2,11 +2,11 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Move online publishing, public content reads, uploaded assets, and visitor messages from GitHub/file writes to Cloudflare D1/R2.
+**Goal:** Move online publishing, public content reads, and visitor messages from GitHub/file writes to Cloudflare D1, with optional R2 support for uploaded assets when billing is available.
 
-**Architecture:** Add a narrow Cloudflare storage layer that adapts D1 rows and R2 objects to the existing content/editor/message types. Public routes prefer D1 on Cloudflare and fall back to bundled static content; local development continues to use file-backed content unless bindings are available.
+**Architecture:** Add a narrow Cloudflare storage layer that adapts D1 rows to the existing content/editor/message types. Public routes prefer D1 on Cloudflare and fall back to bundled static content; local development continues to use file-backed content unless bindings are available. R2 remains optional in code, and Cloudflare publishing rejects new uploads when no R2 bucket is bound.
 
-**Tech Stack:** Next.js 16 App Router, OpenNext Cloudflare `getCloudflareContext`, Cloudflare D1, Cloudflare R2, Node test runner.
+**Tech Stack:** Next.js 16 App Router, OpenNext Cloudflare `getCloudflareContext`, Cloudflare D1, optional Cloudflare R2, Node test runner.
 
 ---
 
@@ -44,7 +44,8 @@
 - Test: `src/lib/cloudflare-content-store.test.mjs`
 
 - [x] On Cloudflare, publish content directly to D1.
-- [x] Store new uploaded cover/assets in R2 under `uploads/<collection>/<slug>/...`.
+- [x] Store new uploaded cover/assets in R2 under `uploads/<collection>/<slug>/...` when R2 is bound.
+- [x] Reject new uploaded cover/assets with a clear error when R2 is not bound.
 - [x] Preserve existing public asset paths.
 - [x] Delete D1 content and matching R2 prefix for editor deletes.
 - [x] Load existing editor drafts from D1 when editing online.

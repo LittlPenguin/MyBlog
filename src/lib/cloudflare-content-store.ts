@@ -193,6 +193,28 @@ async function persistR2Assets({
   };
 }
 
+export function validateCloudflareAssetUploads({
+  bucket,
+  coverUpload,
+  assetUploads = [],
+}: {
+  bucket: R2BucketBinding | null;
+  coverUpload?: EditorUploadedFile | null;
+  assetUploads?: EditorUploadedFile[];
+}) {
+  if (bucket || (!coverUpload && assetUploads.length === 0)) {
+    return {
+      ok: true,
+    } as const;
+  }
+
+  return {
+    ok: false,
+    message:
+      "Cloudflare R2 is not configured, so uploaded covers and attachments cannot be saved. Publish without new files or enable R2.",
+  } as const;
+}
+
 export async function listD1Content<T extends BaseContentFrontmatter = BaseContentFrontmatter>(
   db: D1DatabaseBinding,
   category: EditorCategory,

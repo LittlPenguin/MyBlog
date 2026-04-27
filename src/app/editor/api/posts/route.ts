@@ -15,6 +15,7 @@ import {
   deleteD1Content,
   getD1ContentBySlug,
   saveD1Content,
+  validateCloudflareAssetUploads,
 } from "@/lib/cloudflare-content-store";
 import {
   buildGitHubEditorDeletePlan,
@@ -143,6 +144,22 @@ export async function POST(request: Request) {
       }
 
       const bucket = getR2Binding();
+      const assetValidation = validateCloudflareAssetUploads({
+        bucket,
+        coverUpload,
+        assetUploads,
+      });
+
+      if (!assetValidation.ok) {
+        return NextResponse.json<EditorWriteResult>(
+          {
+            ok: false,
+            message: assetValidation.message,
+          },
+          { status: 422 },
+        );
+      }
+
       const result = await saveD1Content({
         db,
         bucket,

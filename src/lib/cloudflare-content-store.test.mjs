@@ -15,6 +15,7 @@ import {
   readContentBySlugWithD1Fallback,
   readContentCollectionWithD1Fallback,
 } from "./content.ts";
+import { validateCloudflareAssetUploads } from "./cloudflare-content-store.ts";
 
 function createFakeD1() {
   const contentRows = [];
@@ -470,4 +471,29 @@ test("content readers do not fall back to bundled content after a D1 delete tomb
   });
 
   assert.deepEqual(items, []);
+});
+
+test("Cloudflare publishing rejects new uploaded assets when no R2 bucket is bound", () => {
+  const withoutUploads = validateCloudflareAssetUploads({
+    bucket: null,
+    coverUpload: null,
+    assetUploads: [],
+  });
+  assert.equal(withoutUploads.ok, true);
+
+  const withUploads = validateCloudflareAssetUploads({
+    bucket: null,
+    coverUpload: {
+      name: "cover.png",
+      type: "image/png",
+      size: 4,
+      buffer: new Uint8Array([1, 2, 3, 4]),
+    },
+    assetUploads: [],
+  });
+
+  assert.deepEqual(withUploads, {
+    ok: false,
+    message: "Cloudflare R2 is not configured, so uploaded covers and attachments cannot be saved. Publish without new files or enable R2.",
+  });
 });

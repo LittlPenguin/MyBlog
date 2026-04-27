@@ -54,29 +54,27 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ## Cloudflare Workers Deployment
 
-Cloudflare deployments cannot write directly into the deployed Worker bundle. Public posts, projects, and resources are still bundled at build time through `src/content/generated/static-content-registry.*` as a fallback, but the online runtime uses Cloudflare D1/R2 when these bindings are configured:
+Cloudflare deployments cannot write directly into the deployed Worker bundle. Public posts, projects, and resources are still bundled at build time through `src/content/generated/static-content-registry.*` as a fallback, but the online runtime uses Cloudflare D1 when this binding is configured:
 
 - `MYBLOG_DB`: D1 database binding for posts, projects, resources, and visitor messages
-- `MYBLOG_ASSETS`: R2 bucket binding for editor-uploaded covers and attachments
 
 Create and initialize the storage:
 
 ```powershell
 npx wrangler d1 create myblog
-npx wrangler r2 bucket create myblog-assets
 npx wrangler d1 execute myblog --remote --file migrations/0001_d1_r2_content.sql
 node scripts/export-content-for-d1.mjs > .\d1-content-import.sql
 npx wrangler d1 execute myblog --remote --file .\d1-content-import.sql
 ```
 
-After creating the D1 database, replace `REPLACE_WITH_D1_DATABASE_ID` in `wrangler.jsonc` with the database id returned by Wrangler or set the same binding in the Cloudflare dashboard.
+The current `wrangler.jsonc` is configured with the `myblog` D1 database id for this deployment. If you recreate the database later, replace the `database_id` with the new id returned by Wrangler.
 
 Configure these Worker runtime secrets before using admin and editor flows:
 
 - `ADMIN_ACCESS_CODE`
 - `ADMIN_SESSION_SECRET`
 
-When D1 is bound, online `/editor` publishing writes content directly to D1 and uploads files to R2. Newly published content is visible without a GitHub commit/rebuild cycle. If D1 is not bound, public pages fall back to bundled static content and the legacy GitHub publishing path can still be used when its variables are configured.
+When D1 is bound, online `/editor` publishing writes text content directly to D1. Newly published content is visible without a GitHub commit/rebuild cycle. Because R2 is not configured, new cover and attachment uploads are rejected on Cloudflare with a clear error; publish without new files for now. If D1 is not bound, public pages fall back to bundled static content and the legacy GitHub publishing path can still be used when its variables are configured.
 
 Production builds use Webpack because the current OpenNext Cloudflare adapter does not reliably load Next 16 Turbopack server chunks in the Worker runtime.
 

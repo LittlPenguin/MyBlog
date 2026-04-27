@@ -12,13 +12,7 @@
     {
       "binding": "MYBLOG_DB",
       "database_name": "myblog",
-      "database_id": "REPLACE_WITH_D1_DATABASE_ID"
-    }
-  ],
-  "r2_buckets": [
-    {
-      "binding": "MYBLOG_ASSETS",
-      "bucket_name": "myblog-assets"
+      "database_id": "eb3c77e2-9d4e-4ca9-b615-9bd0d5a513f6"
     }
   ],
   "vars": {

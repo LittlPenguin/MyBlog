@@ -47,7 +47,8 @@ This file summarizes the current product state for new Codex sessions and parall
 - Editor publishing is handled by `src/app/editor/api/posts/route.ts`, which writes files through the shared content helpers in `src/lib/content.ts`.
 - Content deletion also flows through the editor API and removes the matching content file plus its uploads directory.
 - Cloudflare Workers deployments bundle public MDX content into `src/content/generated/static-content-registry.*` before build so public collection pages do not depend on runtime filesystem reads.
-- Cloudflare Workers deployments cannot mutate the deployed bundle. Online `/editor` publish/delete APIs write content directly to Cloudflare D1 when `MYBLOG_DB` is bound, and uploaded covers/assets are written to R2 when `MYBLOG_ASSETS` is bound.
+- Cloudflare Workers deployments cannot mutate the deployed bundle. Online `/editor` publish/delete APIs write content directly to Cloudflare D1 when `MYBLOG_DB` is bound.
+- R2 is optional and is not currently configured for this deployment. New cover and attachment uploads are rejected on Cloudflare until an R2 bucket is available; text-only content publishing works through D1.
 - The legacy GitHub publishing path remains available only as a fallback when D1 is not bound and GitHub publishing variables/secrets are configured.
 - Visitor messages are stored separately from MDX content under `src/content/messages`.
 - Each message is persisted as one JSON file with:
@@ -132,7 +133,7 @@ This file summarizes the current product state for new Codex sessions and parall
 - `main` is the active baseline. Old Codex branches should not be used to infer the current state.
 - Production builds use `next build --webpack` because the OpenNext Cloudflare runtime path currently does not reliably load Next 16 Turbopack server chunks.
 - `npm run cf:build` is the supported Cloudflare build command because it refreshes the static content registry before OpenNext packages the Worker.
-- Online editor publishing on Cloudflare requires runtime secrets for admin access and Worker bindings for storage: `ADMIN_ACCESS_CODE`, `ADMIN_SESSION_SECRET`, `MYBLOG_DB`, and optionally `MYBLOG_ASSETS`.
+- Online editor publishing on Cloudflare requires runtime secrets for admin access and a D1 Worker binding for storage: `ADMIN_ACCESS_CODE`, `ADMIN_SESSION_SECRET`, and `MYBLOG_DB`.
 - `.codex/` is local workspace state and should not be committed unless explicitly requested.
 
 ## Development Baseline
