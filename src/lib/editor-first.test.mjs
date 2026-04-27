@@ -97,6 +97,14 @@ test("editor route exposes delete support and list-page redirects", () => {
   assert.match(contentSource, /"\/resources"/);
 });
 
+test("delete success flows refresh after client-side redirects", () => {
+  const editorClientSource = readFileSync(join(process.cwd(), "src/app/editor/editor-client.tsx"), "utf8");
+  const deleteButtonSource = readFileSync(join(process.cwd(), "src/components/site/admin-delete-button.tsx"), "utf8");
+
+  assert.match(editorClientSource, /window\.location\.assign\(result\.redirectHref\);/);
+  assert.match(deleteButtonSource, /window\.location\.assign\(redirectHref\);/);
+});
+
 test("content management entry points rely on admin permission state instead of development mode", () => {
   const filesToCheck = [
     join(process.cwd(), "src/app/archive/archive-client.tsx"),

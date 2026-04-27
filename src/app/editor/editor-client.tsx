@@ -446,7 +446,7 @@ export function EditorClient({
         return;
       }
 
-      router.push(result.redirectHref);
+      window.location.assign(result.redirectHref);
     } catch {
       setStatus("error");
       setMessage("Network error while deleting.");

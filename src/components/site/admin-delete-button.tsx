@@ -93,7 +93,7 @@ export function AdminDeleteButton({
         setMessage("");
 
         if (redirectHref) {
-          router.push(redirectHref);
+          window.location.assign(redirectHref);
         } else {
           router.refresh();
         }
