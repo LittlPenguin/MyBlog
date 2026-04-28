@@ -291,6 +291,20 @@ export async function hasD1ContentRow(db: D1DatabaseBinding, category: EditorCat
   return Boolean(row);
 }
 
+export async function listD1ContentRowStates(db: D1DatabaseBinding, category: EditorCategory) {
+  const collection = categoryToCollection(category);
+  const rows = await db
+    .prepare(
+      `SELECT slug, deleted_at
+       FROM content_items
+       WHERE collection = ?1`,
+    )
+    .bind(collection)
+    .all<{ slug: string; deleted_at: string | null }>();
+
+  return new Map((rows.results ?? []).map((row) => [normalizeContentSlug(row.slug), row.deleted_at]));
+}
+
 export async function getD1ContentBySlug<T extends BaseContentFrontmatter = BaseContentFrontmatter>(
   db: D1DatabaseBinding,
   category: EditorCategory,

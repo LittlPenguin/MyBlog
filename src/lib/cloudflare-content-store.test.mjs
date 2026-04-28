@@ -20,6 +20,7 @@ import { validateCloudflareAssetUploads } from "./cloudflare-content-store.ts";
 function createFakeD1() {
   const contentRows = [];
   const messageRows = [];
+  const queryLog = [];
 
   function bindValue(row, key) {
     return row[key.startsWith("@") ? key.slice(1) : key];
@@ -28,6 +29,7 @@ function createFakeD1() {
   return {
     contentRows,
     messageRows,
+    queryLog,
     prepare(sql) {
       let values = [];
 
@@ -37,6 +39,18 @@ function createFakeD1() {
           return this;
         },
         async all() {
+          queryLog.push(sql);
+
+          if (sql.includes("SELECT slug, deleted_at") && sql.includes("FROM content_items")) {
+            let rows = contentRows;
+
+            if (sql.includes("collection = ?1")) {
+              rows = rows.filter((row) => row.collection === values[0]);
+            }
+
+            return { results: rows.map((row) => ({ slug: row.slug, deleted_at: row.deleted_at })) };
+          }
+
           if (sql.includes("SELECT COUNT(*) AS count") && sql.includes("FROM content_items")) {
             const collection = values[0];
             const slug = values[1];
@@ -79,6 +93,8 @@ function createFakeD1() {
           return { results: [] };
         },
         async first() {
+          queryLog.push(sql);
+
           if (sql.includes("SELECT deleted_at") && sql.includes("FROM content_items")) {
             const collection = values[0];
             const slug = values[1];
@@ -112,6 +128,8 @@ function createFakeD1() {
           return null;
         },
         async run() {
+          queryLog.push(sql);
+
           if (sql.includes("INSERT INTO content_items")) {
             const row = {
               collection: values[0],
@@ -516,6 +534,69 @@ test("collection readers merge D1 overrides with bundled fallback content", asyn
     ["bundled-note", "untouched-bundled-note"],
   );
   assert.equal(items[0].meta.title, "Updated Bundled Note");
+});
+
+test("collection readers fetch D1 row state once while merging fallback content", async () => {
+  const db = createFakeD1();
+
+  await saveD1Content({
+    db,
+    payload: createDraft({
+      title: "Updated Bundled Note",
+      slug: "bundled-note",
+      content: "# Updated Bundled Note",
+    }),
+    now: () => "2026-04-21T10:00:00.000Z",
+  });
+
+  db.queryLog.length = 0;
+
+  await readContentCollectionWithD1Fallback({
+    db,
+    category: "archive",
+    fallback: async () => [
+      {
+        meta: {
+          title: "Bundled Note",
+          slug: "bundled-note",
+          summary: "Original bundled content",
+          date: "2026-04-19",
+          category: "Fallback",
+          tags: [],
+          featured: false,
+          assetNames: [],
+        },
+        content: "# Bundled Note",
+        filePath: "bundled-note.mdx",
+      },
+      {
+        meta: {
+          title: "Untouched Bundled Note",
+          slug: "untouched-bundled-note",
+          summary: "Still visible",
+          date: "2026-04-18",
+          category: "Fallback",
+          tags: [],
+          featured: false,
+          assetNames: [],
+        },
+        content: "# Untouched Bundled Note",
+        filePath: "untouched-bundled-note.mdx",
+      },
+    ],
+  });
+
+  const contentQueries = db.queryLog.filter((sql) => sql.includes("FROM content_items"));
+
+  assert.equal(contentQueries.length, 2);
+  assert.equal(
+    contentQueries.filter((sql) => sql.includes("SELECT slug, deleted_at")).length,
+    1,
+  );
+  assert.equal(
+    contentQueries.some((sql) => sql.includes("SELECT deleted_at")),
+    false,
+  );
 });
 
 test("content readers do not fall back to bundled content after a D1 delete tombstone", async () => {
