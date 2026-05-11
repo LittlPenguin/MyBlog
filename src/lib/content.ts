@@ -21,8 +21,7 @@ import { getD1Binding, type D1DatabaseBinding } from "./cloudflare-bindings.js";
 import {
   getD1ContentBySlug,
   hasD1ContentRow,
-  listD1ContentRowStates,
-  listD1Content,
+  listAllD1Content,
 } from "./cloudflare-content-store.js";
 
 export const CONTENT_CATEGORY_DIRECTORY = {
@@ -255,25 +254,20 @@ export async function readContentCollectionWithD1Fallback<T extends BaseContentF
   fallback: () => Promise<ContentCollectionItem<T>[]>;
 }) {
   if (db) {
-    const items = await listD1Content<T>(db, category);
-    const rowStates = await listD1ContentRowStates(db, category);
+    const { items: d1Items, deletedSlugs } = await listAllD1Content<T>(db, category);
     const fallbackItems = await fallback();
 
-    if (items.length === 0 && rowStates.size === 0) {
+    if (d1Items.length === 0 && deletedSlugs.size === 0) {
       return fallbackItems;
     }
 
     const merged = new Map(fallbackItems.map((item) => [normalizeContentSlug(item.meta.slug), item]));
 
-    for (const item of fallbackItems) {
-      const normalizedSlug = normalizeContentSlug(item.meta.slug);
-
-      if (rowStates.has(normalizedSlug)) {
-        merged.delete(normalizedSlug);
-      }
+    for (const slug of deletedSlugs) {
+      merged.delete(slug);
     }
 
-    for (const item of items) {
+    for (const item of d1Items) {
       merged.set(normalizeContentSlug(item.meta.slug), item);
     }
 

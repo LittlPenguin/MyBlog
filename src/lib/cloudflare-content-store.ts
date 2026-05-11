@@ -6,7 +6,6 @@ import {
   createBaseContentFrontmatter,
   createPersistedEditorDraft,
   getContentDirectoryForCategory,
-  parseContentCollectionSource,
   type ContentCollectionItem,
   type EditorUploadedFile,
   type EditorWritePayload,
@@ -137,7 +136,11 @@ function createDeletedContentSource(source: EditorDraftSource, now: string) {
 function contentRowToItem<T extends BaseContentFrontmatter = BaseContentFrontmatter>(
   row: ContentRow,
 ): ContentCollectionItem<T> {
-  return parseContentCollectionSource<T>(getContentOutputPath(collectionToCategory(row.collection) ?? "archive", row.slug), row.source);
+  return {
+    meta: JSON.parse(row.frontmatter_json) as T,
+    content: row.body,
+    filePath: getContentOutputPath(collectionToCategory(row.collection) ?? "archive", row.slug),
+  };
 }
 
 function toMessageStatus(readAt: string | null) {
@@ -303,6 +306,38 @@ export async function listD1ContentRowStates(db: D1DatabaseBinding, category: Ed
     .all<{ slug: string; deleted_at: string | null }>();
 
   return new Map((rows.results ?? []).map((row) => [normalizeContentSlug(row.slug), row.deleted_at]));
+}
+
+export async function listAllD1Content<T extends BaseContentFrontmatter = BaseContentFrontmatter>(
+  db: D1DatabaseBinding,
+  category: EditorCategory,
+) {
+  const collection = categoryToCollection(category);
+  const rows = await db
+    .prepare(
+      `SELECT collection, slug, title, summary, category, tags_json, frontmatter_json, body, source, published_at, updated_at, deleted_at
+       FROM content_items
+       WHERE collection = ?1
+       ORDER BY published_at DESC, updated_at DESC`,
+    )
+    .bind(collection)
+    .all<ContentRow>();
+
+  const allRows = rows.results ?? [];
+  const items: ContentCollectionItem<T>[] = [];
+  const deletedSlugs = new Set<string>();
+
+  for (const row of allRows) {
+    const normalizedSlug = normalizeContentSlug(row.slug);
+
+    if (row.deleted_at) {
+      deletedSlugs.add(normalizedSlug);
+    } else {
+      items.push(contentRowToItem<T>(row));
+    }
+  }
+
+  return { items, deletedSlugs };
 }
 
 export async function getD1ContentBySlug<T extends BaseContentFrontmatter = BaseContentFrontmatter>(

@@ -68,6 +68,23 @@ function createFakeD1() {
             return { results: rows.map((row) => ({ slug: row.slug, deleted_at: row.deleted_at })) };
           }
 
+          if (sql.includes("deleted_at") && sql.includes("frontmatter_json") && !sql.includes("deleted_at IS NULL") && sql.includes("FROM content_items")) {
+            let rows = contentRows;
+
+            if (sql.includes("collection = ?1")) {
+              rows = rows.filter((row) => row.collection === values[0]);
+            }
+
+            rows = [...rows].sort((a, b) => {
+              if (a.published_at === b.published_at) {
+                return b.updated_at.localeCompare(a.updated_at);
+              }
+              return b.published_at.localeCompare(a.published_at);
+            });
+
+            return { results: rows };
+          }
+
           if (sql.includes("FROM content_items")) {
             let rows = contentRows.filter((row) => !row.deleted_at);
 
@@ -588,14 +605,10 @@ test("collection readers fetch D1 row state once while merging fallback content"
 
   const contentQueries = db.queryLog.filter((sql) => sql.includes("FROM content_items"));
 
-  assert.equal(contentQueries.length, 2);
+  assert.equal(contentQueries.length, 1);
   assert.equal(
-    contentQueries.filter((sql) => sql.includes("SELECT slug, deleted_at")).length,
-    1,
-  );
-  assert.equal(
-    contentQueries.some((sql) => sql.includes("SELECT deleted_at")),
-    false,
+    contentQueries.some((sql) => sql.includes("frontmatter_json")),
+    true,
   );
 });
 
