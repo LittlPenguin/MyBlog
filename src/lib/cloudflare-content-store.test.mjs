@@ -476,7 +476,7 @@ test("content readers prefer D1 when rows exist and fall back when D1 is empty",
   assert.equal(fallbackDetail?.meta.title, "Fallback Detail");
 });
 
-test("collection readers merge D1 overrides with bundled fallback content", async () => {
+test("D1 is the source of truth when content exists, skipping static fallback", async () => {
   const db = createFakeD1();
 
   await saveD1Content({
@@ -497,58 +497,36 @@ test("collection readers merge D1 overrides with bundled fallback content", asyn
     now: () => "2026-04-22T10:00:00.000Z",
   });
 
+  let fallbackCalled = false;
+
   const items = await readContentCollectionWithD1Fallback({
     db,
     category: "archive",
-    fallback: async () => [
-      {
-        meta: {
-          title: "Bundled Note",
-          slug: "bundled-note",
-          summary: "Original bundled content",
-          date: "2026-04-19",
-          category: "Fallback",
-          tags: [],
-          featured: false,
-          assetNames: [],
+    fallback: async () => {
+      fallbackCalled = true;
+      return [
+        {
+          meta: {
+            title: "Bundled Note",
+            slug: "bundled-note",
+            summary: "Original bundled content",
+            date: "2026-04-19",
+            category: "Fallback",
+            tags: [],
+            featured: false,
+            assetNames: [],
+          },
+          content: "# Bundled Note",
+          filePath: "bundled-note.mdx",
         },
-        content: "# Bundled Note",
-        filePath: "bundled-note.mdx",
-      },
-      {
-        meta: {
-          title: "Deleted Bundled Note",
-          slug: "deleted-bundled-note",
-          summary: "This should be hidden by a tombstone",
-          date: "2026-04-19",
-          category: "Fallback",
-          tags: [],
-          featured: false,
-          assetNames: [],
-        },
-        content: "# Deleted Bundled Note",
-        filePath: "deleted-bundled-note.mdx",
-      },
-      {
-        meta: {
-          title: "Untouched Bundled Note",
-          slug: "untouched-bundled-note",
-          summary: "Still visible",
-          date: "2026-04-18",
-          category: "Fallback",
-          tags: [],
-          featured: false,
-          assetNames: [],
-        },
-        content: "# Untouched Bundled Note",
-        filePath: "untouched-bundled-note.mdx",
-      },
-    ],
+      ];
+    },
   });
 
+  assert.equal(fallbackCalled, false);
   assert.deepEqual(
     items.map((item) => item.meta.slug),
-    ["bundled-note", "untouched-bundled-note"],
+    ["bundled-note"],
   );
   assert.equal(items[0].meta.title, "Updated Bundled Note");
 });

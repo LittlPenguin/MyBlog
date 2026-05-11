@@ -255,23 +255,12 @@ export async function readContentCollectionWithD1Fallback<T extends BaseContentF
 }) {
   if (db) {
     const { items: d1Items, deletedSlugs } = await listAllD1Content<T>(db, category);
-    const fallbackItems = await fallback();
 
     if (d1Items.length === 0 && deletedSlugs.size === 0) {
-      return fallbackItems;
+      return fallback();
     }
 
-    const merged = new Map(fallbackItems.map((item) => [normalizeContentSlug(item.meta.slug), item]));
-
-    for (const slug of deletedSlugs) {
-      merged.delete(slug);
-    }
-
-    for (const item of d1Items) {
-      merged.set(normalizeContentSlug(item.meta.slug), item);
-    }
-
-    return Array.from(merged.values()).sort((a, b) => +new Date(b.meta.date) - +new Date(a.meta.date));
+    return d1Items;
   }
 
   return fallback();
