@@ -52,7 +52,15 @@ next-env.d.ts
 
 # local Codex state
 /.codex/
+/.codex-dev.log
 /.worktrees/
+
+# playwright MCP logs
+/.playwright-mcp/
+
+# generated artifacts
+/releases/
+/d1-content-import.sql
 
 # local Cloudflare state
 /.wrangler/
